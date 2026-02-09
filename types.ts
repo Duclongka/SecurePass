@@ -1,5 +1,5 @@
 
-export type EntryType = 'login' | 'card' | 'contact' | 'note';
+export type EntryType = 'login' | 'card' | 'contact' | 'document';
 
 export type Language = 'en' | 'vi';
 
@@ -8,6 +8,7 @@ export interface PasswordEntry {
   type: EntryType;
   title: string;
   group: string;
+  subGroup?: string;
   username?: string;
   password?: string;
   pin?: string;
@@ -15,10 +16,10 @@ export interface PasswordEntry {
   recoveryInfo?: string;
   url?: string;
   notes?: string;
-  expiryDate?: string; // Specific date string
+  expiryDate?: string;
   expiryMonth?: string;
   expiryYear?: string;
-  expiryInterval?: '1d' | '1m' | '6m' | '1y'; // New field for logic
+  expiryInterval?: '1d' | '1m' | '6m' | '1y';
   cardNumber?: string;
   cardHolder?: string;
   cardType?: string;
@@ -31,6 +32,23 @@ export interface PasswordEntry {
   strength: number;
   createdAt: number;
   isFrequent?: boolean;
+
+  // Personal Document Fields
+  documentType?: 'id_card' | 'health_insurance' | 'driving_license' | 'passport' | 'residence_card';
+  idNumber?: string;
+  dob?: string;
+  hometown?: string;
+  residence?: string;
+  issuer?: string;
+  issueDate?: string;
+  recognition?: string;
+  gender?: string;
+  hospital?: string;
+  nationality?: string;
+  class?: string;
+  passportType?: string;
+  passportCode?: string;
+  placeOfBirth?: string;
 }
 
 export type AppView = 'login' | 'vault' | 'generator' | 'settings';
@@ -38,11 +56,12 @@ export type AppView = 'login' | 'vault' | 'generator' | 'settings';
 export interface SettingsState {
   autoLockMinutes: number;
   clearClipboardSeconds: number;
-  autoLockEnabled: boolean; // New toggle
-  clearClipboardEnabled: boolean; // New toggle
+  autoLockEnabled: boolean;
+  clearClipboardEnabled: boolean;
   biometricEnabled: boolean;
   language: Language;
   groups: string[];
   folders: string[];
+  subFolders: Record<string, string[]>; // Mapping of root folder to sub-folders
   hasMasterPassword?: boolean;
 }

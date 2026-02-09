@@ -28,18 +28,19 @@ const translations = {
     typeLogin: 'Login (ID)',
     typeCard: 'Card',
     typeContact: 'Contacts',
-    typeNote: 'Secure Notes',
+    typeDocument: 'Personal Docs',
     noEntries: 'No items yet',
     copySuccess: 'Copied to clipboard',
     deleteConfirm: 'Press 3 times to delete',
     addLogin: 'Login (ID)',
     addCard: 'Card',
     addContact: 'Contact',
-    addNote: 'Note',
+    addDocument: 'Personal Doc',
     save: 'Save',
     cancel: 'Cancel',
     title: 'Title',
     titleHint: 'e.g. Vietcombank, Techcombank...',
+    loginTitleHint: 'Facebook account, Gmail, Camera account...',
     username: 'Username',
     usernameHint: 'e.g. abc@gmail.com, 09xx...',
     password: 'Password',
@@ -75,6 +76,7 @@ const translations = {
     genMinSpec: 'Min Special',
     copyPassword: 'Copy Password',
     groupLabel: 'Group',
+    subGroupLabel: 'Sub-group',
     editEntry: 'Edit Entry',
     newEntry: 'New Entry',
     languageLabel: 'Language',
@@ -84,6 +86,7 @@ const translations = {
     resetVault: 'Reset Vault',
     settingsGroup: 'Create Group',
     settingsFolder: 'Create Folder',
+    settingsSubFolder: 'Create Sub-folder',
     deleteFolder: 'Delete Folder',
     settingsInfo: 'Information',
     qrCode: 'QR Code',
@@ -112,7 +115,34 @@ const translations = {
     wrongPassword: 'Incorrect Master Password',
     seeMore: 'See More',
     seeLess: 'See Less',
-    resetWarning: 'WARNING: This will delete ALL your passwords forever. Are you absolutely sure?'
+    resetWarning: 'WARNING: This will delete ALL your passwords forever. Are you absolutely sure?',
+    docType: 'Document Type',
+    idCard: 'ID Card',
+    healthInsurance: 'Health Insurance',
+    drivingLicense: 'Driving License',
+    passport: 'Passport',
+    residenceCard: 'Residence Card',
+    idNumber: 'ID Number',
+    dob: 'Date of Birth',
+    hometown: 'Hometown',
+    residence: 'Residence',
+    issuer: 'Issuer',
+    issueDate: 'Issue Date',
+    recognition: 'Recognition',
+    gender: 'Gender',
+    hospital: 'Hospital',
+    nationality: 'Nationality',
+    class: 'Class',
+    issueAuthority: 'Issuing Authority',
+    placeOfBirth: 'Place of Birth',
+    idNo12Warning: 'Must enter exactly 12 digits!',
+    idNo10Warning: 'Must enter exactly 10 digits!',
+    uppercaseWarning: 'Please enter UPPERCASE letters',
+    indefinite: 'Indefinite',
+    chooseDocType: '-- Choose Document Type --',
+    chooseCardType: '-Chọn Loại thẻ-',
+    chooseGender: '-- Choose Gender --',
+    chooseClass: '-- Choose Class --'
   },
   vi: {
     appTitle: 'SecurePass',
@@ -135,18 +165,19 @@ const translations = {
     typeLogin: 'Đăng nhập (ID)',
     typeCard: 'Thẻ (Card)',
     typeContact: 'Danh bạ',
-    typeNote: 'Ghi chú tuyệt mật',
+    typeDocument: 'Giấy tờ cá nhân',
     noEntries: 'Chưa có dữ liệu',
     copySuccess: 'Đã sao chép vào bộ nhớ đệm',
     deleteConfirm: 'Chạm 3 lần để xóa',
     addLogin: 'Đăng nhập (ID)',
     addCard: 'Thẻ (Card)',
     addContact: 'Danh bạ',
-    addNote: 'Ghi chú',
+    addDocument: 'Giấy tờ cá nhân',
     save: 'Lưu',
     cancel: 'Hủy',
     title: 'Tiêu đề',
     titleHint: 'Vietcombank, Techcombank...',
+    loginTitleHint: 'Tài khoản facebook, Gmail, TK camera ...',
     username: 'Tên đăng nhập',
     usernameHint: 'abc@gmail.com, số điện thoại...',
     password: 'Mật khẩu',
@@ -158,7 +189,7 @@ const translations = {
     urlHint: 'https://gmail.com...',
     notes: 'Ghi chú',
     cardName: 'Tên trên thẻ',
-    cardNameHint: 'LE DUC LONG...',
+    cardNameHint: 'LÊ ĐỨC LONG',
     cardNumber: 'Số thẻ',
     cardType: 'Loại thẻ',
     expiryMonth: 'Thời hạn',
@@ -182,6 +213,7 @@ const translations = {
     genMinSpec: 'Số ký tự đặc biệt tối thiểu',
     copyPassword: 'Sao chép mật khẩu',
     groupLabel: 'Nhóm',
+    subGroupLabel: 'Nhóm con',
     editEntry: 'Sửa mục',
     newEntry: 'Thêm mục mới',
     languageLabel: 'Ngôn ngữ',
@@ -191,6 +223,7 @@ const translations = {
     resetVault: 'Xóa toàn bộ kho',
     settingsGroup: 'Tạo nhóm',
     settingsFolder: 'Tạo thư mục',
+    settingsSubFolder: 'Tạo thư mục con',
     deleteFolder: 'Xóa Thư mục',
     settingsInfo: 'Thông tin',
     qrCode: 'Mã QR',
@@ -219,8 +252,60 @@ const translations = {
     wrongPassword: 'Mật khẩu chính không chính xác',
     seeMore: 'Xem thêm',
     seeLess: 'Thu gọn',
-    resetWarning: 'CẢNH BÁO: Thao tác này sẽ xóa vĩnh viễn TOÀN BỘ mật khẩu của bạn. Bạn có chắc chắn không?'
+    resetWarning: 'CẢNH BÁO: Thao tác này sẽ xóa vĩnh viễn TOÀN BỘ mật khẩu của bạn. Bạn có chắc chắn không?',
+    docType: 'Loại giấy tờ',
+    idCard: 'Thẻ Căn cước',
+    healthInsurance: 'Thẻ BHYT',
+    drivingLicense: 'Giấy phép lái xe',
+    passport: 'Sổ Hộ chiếu',
+    residenceCard: 'Thẻ cư trú',
+    idNumber: 'Số Căn cước',
+    dob: 'Ngày sinh',
+    hometown: 'Quê quán',
+    residence: 'Nơi cư trú',
+    issuer: 'Nơi cấp',
+    issueDate: 'Ngày cấp',
+    recognition: 'Đặc điểm nhận dạng',
+    gender: 'Giới tính',
+    hospital: 'Nơi ĐK KCB BĐ',
+    nationality: 'Quốc tịch',
+    class: 'Hạng',
+    issueAuthority: 'Cơ quan cấp',
+    placeOfBirth: 'Nơi sinh',
+    idNo12Warning: 'Bạn phải nhập đúng 12 chữ số!',
+    idNo10Warning: 'Bạn phải nhập đúng 10 chữ số!',
+    uppercaseWarning: 'Hãy nhập chữ in HOA',
+    indefinite: 'Không thời hạn',
+    chooseDocType: '-- Chọn loại giấy tờ --',
+    chooseCardType: '-Chọn Loại thẻ-',
+    chooseGender: '-- Chọn giới tính --',
+    chooseClass: '-- Chọn hạng --'
   }
+};
+
+const DEFAULT_FOLDERS = [
+  'Mạng xã hội (Facebook, Tiktok, Zalo ...)',
+  'Thư điện tử (Email)',
+  'Ngân hàng',
+  'Điện thoại',
+  'Ứng dụng (App)',
+  'Camera',
+  'Mạng Internet',
+  'Trang web',
+  'Mua sắm online',
+  'Học tập',
+  'Lưu trữ trực tuyến (Online Data)'
+];
+
+const DEFAULT_SUBFOLDERS: Record<string, string[]> = {
+  'Ngân hàng': ['Vietcombank', 'Techcombank', 'Agribank', 'BIDV', 'ACB', 'Viettinbank', 'MBB'],
+  'Mạng xã hội (Facebook, Tiktok, Zalo ...)': ['Facebook', 'Tiktok', 'Zalo', 'Instagram', 'X', 'Line', 'Telegram', 'whatsapp'],
+  'Thư điện tử (Email)': ['Gmail', 'Hotmail', 'Outlook'],
+  'Điện thoại': ['Iphone (icloud)', 'Samsung', 'Xiaomi', 'Poco', 'Google Pixel', 'Vivo', 'Realme', 'Oppo', 'Huawei'],
+  'Camera': ['Imou', 'Xiaomi', 'Ezviz', 'FPT', 'Hikvision', 'Dahua', 'Eufy', 'Tapo'],
+  'Mạng Internet': ['Viettel', 'VNPT', 'FPT'],
+  'Mua sắm online': ['Shopee', 'Lazada', 'Tiktok shop', 'Tiki', 'Sendo', 'Amazon', 'Alibaba', 'Temu', 'Shein', 'Rakuten', 'Mercari'],
+  'Lưu trữ trực tuyến (Online Data)': ['Microsoft OneDrive', 'Google Drive', 'Mega', 'Dropbox']
 };
 
 const App: React.FC = () => {
@@ -264,7 +349,8 @@ const App: React.FC = () => {
       biometricEnabled: true,
       language: 'vi',
       groups: ['Banking', 'Shopping', 'Study', 'Game'],
-      folders: ['Ngân hàng', 'Thư điện tử (Email)', 'Điện thoại', 'Ứng dụng (app)', 'Mạng xã hội', 'Camera', 'Trang Web', 'Wifi', 'Mua sắm online', 'Học tập', 'Trò chơi (Game)', 'Lưu trữ online'],
+      folders: DEFAULT_FOLDERS,
+      subFolders: DEFAULT_SUBFOLDERS,
       hasMasterPassword: !!localStorage.getItem('securepass_master_hash')
     };
     return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
@@ -272,7 +358,6 @@ const App: React.FC = () => {
 
   const t = translations[settings.language];
 
-  // Logic: Only auto-lock if app is unlocked AND no user activity for 1 minute
   useEffect(() => {
     if (isLocked || !settings.autoLockEnabled) {
       if (autoLockTimer.current) clearTimeout(autoLockTimer.current);
@@ -286,10 +371,8 @@ const App: React.FC = () => {
       }, settings.autoLockMinutes * 60000);
     };
 
-    // Initial timer start
     resetTimer();
 
-    // Event listeners for activity
     const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
     activityEvents.forEach(name => document.addEventListener(name, resetTimer));
 
@@ -324,24 +407,12 @@ const App: React.FC = () => {
 
     const verificationToken = localStorage.getItem('securepass_master_hash');
     
-    // Strict Verification Enforced
     if (verificationToken) {
       try {
         await SecurityService.decrypt(JSON.parse(verificationToken), passToUse);
       } catch {
         setToast(t.wrongPassword);
         return;
-      }
-    } else {
-      // First run scenario: No master password yet, check if vault exists
-      const encryptedVault = localStorage.getItem('securepass_vault');
-      if (encryptedVault) {
-        try {
-          await SecurityService.decrypt(JSON.parse(encryptedVault), passToUse);
-        } catch {
-          setToast(t.wrongPassword);
-          return;
-        }
       }
     }
 
@@ -354,7 +425,8 @@ const App: React.FC = () => {
       setIsLocked(false);
       setView('vault');
       setMasterPassword(passToUse);
-    } catch {
+    } catch (err) {
+      console.error("Vault decryption error:", err);
       setToast(t.wrongPassword);
     }
   };
@@ -379,6 +451,22 @@ const App: React.FC = () => {
     if (!masterPassword) return;
     const encrypted = await SecurityService.encrypt(JSON.stringify(updated), masterPassword);
     localStorage.setItem('securepass_vault', JSON.stringify(encrypted));
+  };
+
+  const handleMasterPasswordChange = async (newPassword: string) => {
+    const verification = await SecurityService.encrypt("VALID_SESSION", newPassword);
+    localStorage.setItem('securepass_master_hash', JSON.stringify(verification));
+
+    if (!isLocked && entries.length > 0) {
+      const encrypted = await SecurityService.encrypt(JSON.stringify(entries), newPassword);
+      localStorage.setItem('securepass_vault', JSON.stringify(encrypted));
+    } else if (isLocked) {
+      localStorage.removeItem('securepass_vault');
+      setEntries([]);
+    }
+
+    setMasterPassword(newPassword);
+    setSettings(prev => ({ ...prev, hasMasterPassword: true }));
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -536,11 +624,11 @@ const App: React.FC = () => {
                 <button onClick={() => { setIsAdding('card'); setShowPlusMenu(false); }} className="w-56 bg-[#4CAF50] text-white px-6 py-4 rounded-3xl font-bold shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
                   <Icons.CreditCard size={20} /> {t.addCard}
                 </button>
+                <button onClick={() => { setIsAdding('document'); setShowPlusMenu(false); }} className="w-56 bg-[#4CAF50] text-white px-6 py-4 rounded-3xl font-bold shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+                  <Icons.FileText size={20} /> {t.addDocument}
+                </button>
                 <button onClick={() => { setIsAdding('contact'); setShowPlusMenu(false); }} className="w-56 bg-[#4CAF50] text-white px-6 py-4 rounded-3xl font-bold shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
                   <Icons.Smartphone size={20} /> {t.addContact}
-                </button>
-                <button onClick={() => { setIsAdding('note'); setShowPlusMenu(false); }} className="w-56 bg-[#4CAF50] text-white px-6 py-4 rounded-3xl font-bold shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-                  <Icons.FileText size={20} /> {t.addNote}
                 </button>
                 <button onClick={() => setShowPlusMenu(false)} className="mt-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white active:scale-90 transition-all shadow-lg">
                   <Icons.X size={24} />
@@ -582,7 +670,7 @@ const App: React.FC = () => {
         <MasterPasswordModal 
           t={t} 
           onClose={() => setIsMasterModalOpen(false)} 
-          setMasterPassword={(p: string) => { setMasterPassword(p); setSettings({...settings, hasMasterPassword: true}); }} 
+          setMasterPassword={handleMasterPasswordChange} 
           masterPassword={masterPassword}
         />
       )}
@@ -663,7 +751,7 @@ const VaultScreen = ({ t, entries, searchQuery, setSearchQuery, activeCategory, 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter((e: any) => 
-        e.title.toLowerCase().includes(q) || 
+        (e.title && e.title.toLowerCase().includes(q)) || 
         (e.username && e.username.toLowerCase().includes(q)) ||
         (e.nickname && e.nickname.toLowerCase().includes(q))
       );
@@ -722,7 +810,7 @@ const VaultScreen = ({ t, entries, searchQuery, setSearchQuery, activeCategory, 
             <section>
               <h3 className="text-[10px] font-black text-gray-700 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-1"><Icons.Shield size={12}/> {t.typesHeader}</h3>
               <div className="space-y-2">
-                {['login', 'card', 'contact', 'note'].map(id => (
+                {['login', 'card', 'document', 'contact'].map(id => (
                   <button key={id} onClick={() => setActiveCategory({ type: 'type', val: id })} className="w-full flex items-center justify-between p-4 bg-[#161616] rounded-2xl border border-white/5 hover:border-[#4CAF50]/30 transition-all active:scale-[0.98]">
                     <div className="flex items-center gap-3">
                       <div className="text-[#4CAF50]">
@@ -778,17 +866,17 @@ const EntryItem = ({ entry, isExpired, t, setSelectedEntry, setIsEditing, copy, 
       </div>
       <div className="overflow-hidden">
         <h4 className="text-sm font-bold text-white truncate leading-tight flex items-center gap-2">
-          {entry.title || entry.nickname}
+          {entry.title || entry.nickname || entry.fullName || (entry.documentType ? t[entry.documentType] : 'Item')}
           {isExpired && <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"/>}
         </h4>
         <p className={`text-[10px] uppercase tracking-tighter mt-1 truncate ${isExpired ? 'text-red-500 font-bold' : 'text-gray-600'}`}>
-          {isExpired ? t.expiredWarning : (entry.username || entry.nickname || entry.cardHolder || '...')}
+          {isExpired ? t.expiredWarning : (entry.username || entry.nickname || entry.cardHolder || entry.idNumber || '...')}
         </p>
       </div>
     </div>
     <div className="flex items-center gap-1 shrink-0">
       <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-white transition-colors"><Icons.Pencil size={16} /></button>
-      <button onClick={(e) => { e.stopPropagation(); copy(entry.password || entry.cardNumber || entry.phone || ''); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={16} /></button>
+      <button onClick={(e) => { e.stopPropagation(); copy(entry.password || entry.cardNumber || entry.phone || entry.idNumber || ''); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={16} /></button>
       <button onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><Icons.Trash2 size={16} /></button>
     </div>
   </div>
@@ -802,18 +890,23 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
   const [showConfirmMP, setShowConfirmMP] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+~`|}{[\]:;?><,./-]).{8,30}$/;
 
   const handleSubmit = async () => {
-    if (!passwordRegex.test(newMP)) { return; }
-    if (!isGenerated && newMP !== confirmMP) { return; }
+    if (!passwordRegex.test(newMP) || isProcessing) return;
+    if (!isGenerated && newMP !== confirmMP) return;
     
-    const verification = await SecurityService.encrypt("VALID_SESSION", newMP);
-    localStorage.setItem('securepass_master_hash', JSON.stringify(verification));
-    
-    setMasterPassword(newMP);
-    setIsSuccess(true);
+    setIsProcessing(true);
+    try {
+      await setMasterPassword(newMP);
+      setIsSuccess(true);
+    } catch (err) {
+      console.error("Failed to set master password:", err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleRandom = () => {
@@ -906,10 +999,10 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
           )}
           <button 
             onClick={handleSubmit} 
-            disabled={!passwordRegex.test(newMP) || (!isGenerated && newMP !== confirmMP)}
-            className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg active:scale-95 disabled:opacity-30 disabled:grayscale"
+            disabled={!passwordRegex.test(newMP) || (!isGenerated && newMP !== confirmMP) || isProcessing}
+            className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg active:scale-95 disabled:opacity-30 disabled:grayscale flex items-center justify-center"
           >
-            {t.save}
+            {isProcessing ? <Icons.RefreshCw className="animate-spin" size={18}/> : t.save}
           </button>
         </div>
       </div>
@@ -920,6 +1013,8 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
 /* --- Settings Screen --- */
 const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMasterModalOpen, masterPassword, handleImport, handleExport }: any) => {
   const [newF, setNewF] = useState('');
+  const [newSub, setNewSub] = useState('');
+  const [selectedRoot, setSelectedRoot] = useState('');
 
   const exportKeyFile = async () => {
     if (!masterPassword) { alert('Vui lòng tạo mật khẩu chủ trước'); return; }
@@ -931,6 +1026,47 @@ const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMa
     a.download = `master_key.vpass`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleAddFolder = () => {
+    if(!newF) return;
+    setSettings({...settings, folders: [...settings.folders, newF]});
+    setNewF('');
+  };
+
+  const handleDeleteFolder = (folder: string) => {
+    if (confirm(`Xóa thư mục "${folder}" và tất cả thư mục con liên quan?`)) {
+      const { [folder]: _, ...remainingSubs } = settings.subFolders;
+      setSettings({
+        ...settings,
+        folders: settings.folders.filter(f => f !== folder),
+        subFolders: remainingSubs
+      });
+    }
+  };
+
+  const handleAddSubFolder = () => {
+    if(!newSub || !selectedRoot) return;
+    const currentSubs = settings.subFolders[selectedRoot] || [];
+    setSettings({
+      ...settings,
+      subFolders: {
+        ...settings.subFolders,
+        [selectedRoot]: [...currentSubs, newSub]
+      }
+    });
+    setNewSub('');
+  };
+
+  const handleDeleteSubFolder = (root: string, sub: string) => {
+    const currentSubs = settings.subFolders[root] || [];
+    setSettings({
+      ...settings,
+      subFolders: {
+        ...settings.subFolders,
+        [root]: currentSubs.filter(s => s !== sub)
+      }
+    });
   };
 
   const resetVault = () => {
@@ -961,39 +1097,55 @@ const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMa
             </div>
           </section>
 
-          <section className="bg-[#161616] rounded-[2.5rem] p-6 border border-white/5 space-y-3 shadow-xl">
-            <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2"><Icons.Shield size={14}/> {t.createMasterPass}</h3>
-            <div className="space-y-2.5">
-              <button onClick={() => setIsMasterModalOpen(true)} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase text-[10px] active:scale-95 shadow-lg shadow-[#4CAF50]/10">
-                {settings.hasMasterPassword ? t.changeMasterPass : t.createMasterPass}
-              </button>
-              {settings.hasMasterPassword && (
-                <button onClick={exportKeyFile} className="w-full bg-white/5 text-[#4CAF50] py-4 rounded-3xl font-bold text-[10px] uppercase border border-white/5 active:scale-95 flex items-center justify-center gap-2">
-                  <Icons.Download size={16} /> {t.saveKeyFile}
-                </button>
-              )}
-            </div>
-          </section>
-
           <section className="bg-[#161616] rounded-[2.5rem] p-6 border border-white/5 space-y-4 shadow-xl">
             <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2"><Icons.Folder size={14}/> {t.foldersHeader}</h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex gap-2">
                 <input value={newF} onChange={e => setNewF(e.target.value)} placeholder={t.settingsFolder} className="flex-1 bg-black/30 border border-white/5 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#4CAF50]/30 outline-none" />
-                <button onClick={() => { if(newF) setSettings({...settings, folders: [...settings.folders, newF]}); setNewF(''); }} className="bg-[#4CAF50] p-3 rounded-2xl text-white active:scale-95"><Icons.Plus size={20}/></button>
+                <button onClick={handleAddFolder} className="bg-[#4CAF50] p-3 rounded-2xl text-white active:scale-95"><Icons.Plus size={20}/></button>
               </div>
+
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {settings.folders.map(f => (
-                  <div key={f} className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5">
-                    <span className="text-xs text-white/70">{f}</span>
-                    <button onClick={() => setSettings({...settings, folders: settings.folders.filter(x => x !== f)})} className="p-2 text-gray-700 hover:text-red-500"><Icons.Trash2 size={16}/></button>
+                  <div key={f} className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5 group">
+                    <span className="text-[11px] text-white/70 font-bold truncate pr-4">{f}</span>
+                    <button onClick={() => handleDeleteFolder(f)} className="p-2 text-gray-700 hover:text-red-500 transition-colors"><Icons.Trash2 size={16}/></button>
                   </div>
                 ))}
               </div>
+
+              <div className="pt-4 border-t border-white/5 space-y-3">
+                <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest px-1">{t.settingsSubFolder}</p>
+                <div className="space-y-2">
+                   <select 
+                    value={selectedRoot} 
+                    onChange={e => setSelectedRoot(e.target.value)} 
+                    className={`w-full bg-black/30 border border-white/5 rounded-2xl px-4 py-3 text-sm outline-none transition-all ${selectedRoot === "" ? "text-gray-500" : "text-white"}`}
+                   >
+                     <option value="" className="text-gray-500 bg-[#161616]">--Chọn thư mục gốc--</option>
+                     {settings.folders.map(f => <option key={f} value={f} className="text-white bg-[#161616]">{f}</option>)}
+                   </select>
+                   <div className="flex gap-2">
+                    <input value={newSub} onChange={e => setNewSub(e.target.value)} placeholder={t.settingsSubFolder} className="flex-1 bg-black/30 border border-white/5 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#4CAF50]/30 outline-none" />
+                    <button onClick={handleAddSubFolder} className="bg-[#4CAF50] p-3 rounded-2xl text-white active:scale-95"><Icons.Plus size={20}/></button>
+                  </div>
+                </div>
+
+                {selectedRoot && (settings.subFolders[selectedRoot] || []).length > 0 && (
+                  <div className="space-y-2 max-h-40 overflow-y-auto mt-2">
+                    {(settings.subFolders[selectedRoot] || []).map(sub => (
+                      <div key={sub} className="flex items-center justify-between p-2.5 bg-white/5 rounded-xl border border-white/5">
+                        <span className="text-[10px] text-white/60 font-medium">{sub}</span>
+                        <button onClick={() => handleDeleteSubFolder(selectedRoot, sub)} className="p-1.5 text-gray-700 hover:text-red-500 transition-colors"><Icons.Trash2 size={14}/></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
-          <section className="bg-[#161616] rounded-[2.5rem] p-6 border border-white/5 space-y-4 shadow-xl">
+          <section className="bg-[#161616] rounded-[2.5rem] p-6 border border-white/5 space-y-4">
             <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2"><Icons.Settings size={14}/> {t.securitySettings}</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1038,9 +1190,10 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
     if (entry) return { ...entry };
     return { 
       type: addType || 'login', group: '---', title: '', username: '', password: '', 
-      cardNumber: '', cardHolder: '', cardType: 'ATM', expiryMonth: '', expiryYear: '',
+      cardNumber: '', cardHolder: '', cardType: '', expiryMonth: '', expiryYear: '',
       nickname: '', fullName: '', phone: '', email: '', address: '', 
-      content: '', notes: '', strength: 0, pin: '', authCode: '', recoveryInfo: '', url: '', expiryInterval: '6m'
+      content: '', notes: '', strength: 0, pin: '', authCode: '', recoveryInfo: '', url: '', expiryInterval: '6m',
+      documentType: ''
     };
   });
   
@@ -1052,52 +1205,174 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
     login: t.typeLogin,
     card: t.typeCard,
     contact: t.typeContact,
-    note: t.typeNote
+    document: t.typeDocument
   };
 
-  const copyableField = (label: string, field: string, value: string, type: string = "text", placeholder: string = "") => (
-    <div className="space-y-1">
-      <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{label}</label>
-      <div className="relative">
-        <input 
-          disabled={isView} type={type} value={value} 
-          onChange={e => setLocalData({...localData, [field]: e.target.value})} 
-          className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 pl-6 pr-14 text-sm text-white focus:border-[#4CAF50]/40 outline-none transition-all placeholder-gray-700 disabled:opacity-70"
-          placeholder={placeholder}
-        />
-        <button type="button" onClick={() => copy(value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#4CAF50] transition-colors">
-          <Icons.Copy size={18}/>
-        </button>
+  const currentSubFolders = settings.subFolders[localData.group] || [];
+
+  const copyableField = (label: string, field: string, value: string, type: string = "text", placeholder: string = "", validation?: (val: string) => string | null) => {
+    const error = validation ? validation(value) : null;
+    return (
+      <div className="space-y-1">
+        <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{label}</label>
+        <div className="relative">
+          <input 
+            disabled={isView} type={type} value={value} 
+            onChange={e => setLocalData({...localData, [field]: e.target.value})} 
+            className={`w-full bg-[#1a1a1a] border rounded-2xl py-4 pl-6 pr-14 text-sm text-white focus:border-[#4CAF50]/40 outline-none transition-all placeholder-gray-700 disabled:opacity-70 ${error ? 'border-red-500/50' : 'border-white/5'}`}
+            placeholder={placeholder}
+          />
+          <button type="button" onClick={() => copy(value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#4CAF50] transition-colors">
+            <Icons.Copy size={18}/>
+          </button>
+        </div>
+        {error && <p className="text-[9px] text-red-500 font-bold px-1 mt-1">{error}</p>}
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderDocumentFields = () => {
+    const isResidence = localData.documentType === 'residence_card';
+    switch (localData.documentType) {
+      case 'id_card':
+      case 'residence_card':
+        return (
+          <>
+            {copyableField(isResidence ? 'Số' : t.idNumber, 'idNumber', localData.idNumber || "", "text", "123456789012", val => val.length > 12 ? t.idNo12Warning : null)}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "LÊ ĐỨC LONG", val => (val && val !== val.toUpperCase()) ? t.uppercaseWarning : null)}
+            {copyableField(t.dob, 'dob', localData.dob || "", "text", "dd/mm/yyyy")}
+            {copyableField(t.hometown, 'hometown', localData.hometown || "", "text", "Kỳ Châu, Kỳ Anh, Hà Tĩnh")}
+            {copyableField(t.residence, 'residence', localData.residence || "", "text", "P.Sông Trí, Hà Tĩnh")}
+            {copyableField('Có giá trị đến ngày', 'expiryDate', localData.expiryDate || "", "text", "dd/mm/yyyy")}
+            {!isResidence && copyableField(t.recognition, 'recognition', localData.recognition || "", "text", "Nốt ruồi bên sau mép ...")}
+            {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cục trưởng cục cảnh sát QLHC về TTXH")}
+            {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "text", "dd/mm/yyyy")}
+          </>
+        );
+      case 'health_insurance':
+        return (
+          <>
+            {copyableField('Mã số', 'idNumber', localData.idNumber || "", "text", "1234567890", val => val.length > 10 ? t.idNo10Warning : null)}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "LÊ ĐỨC LONG", val => (val && val !== val.toUpperCase()) ? t.uppercaseWarning : null)}
+            {copyableField(t.dob, 'dob', localData.dob || "", "text", "dd/mm/yyyy")}
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.gender}</label>
+              <select 
+                disabled={isView} 
+                value={localData.gender} 
+                onChange={e => setLocalData({...localData, gender: e.target.value})} 
+                className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.gender ? 'text-gray-500' : 'text-white'}`}
+              >
+                <option value="" className="text-gray-500">{t.chooseGender}</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            </div>
+            {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Bệnh viện đa khoa...")}
+            {copyableField('Thời hạn (năm)', 'expiryYear', localData.expiryYear || "", "text", "5")}
+            {copyableField('Ngày bắt đầu', 'issueDate', localData.issueDate || "", "text", "dd/mm/yyyy")}
+            {copyableField('Nơi cấp, đổi thẻ BHYT', 'issuer', localData.issuer || "", "text", "BHXH Hà Tĩnh")}
+          </>
+        );
+      case 'driving_license':
+        return (
+          <>
+            {copyableField('Số/No', 'idNumber', localData.idNumber || "", "text", "123456789012", val => val.length > 12 ? t.idNo12Warning : null)}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "LÊ ĐỨC LONG", val => (val && val !== val.toUpperCase()) ? t.uppercaseWarning : null)}
+            {copyableField(t.dob, 'dob', localData.dob || "", "text", "dd/mm/yyyy")}
+            {copyableField('Quốc tịch', 'nationality', localData.nationality || "", "text", "Việt Nam")}
+            {copyableField(t.residence, 'residence', localData.residence || "", "text", "Hà Tĩnh")}
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.class}</label>
+              <select 
+                disabled={isView} 
+                value={localData.class} 
+                onChange={e => {
+                  const isNoTerm = ['A1', 'A2', 'A3'].includes(e.target.value);
+                  setLocalData({...localData, class: e.target.value, expiryDate: isNoTerm ? t.indefinite : localData.expiryDate});
+                }} 
+                className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.class ? 'text-gray-500' : 'text-white'}`}
+              >
+                <option value="" className="text-gray-500">{t.chooseClass}</option>
+                {['A1', 'A2', 'A3', 'B1', 'B2', 'C', 'D', 'E', 'Khác'].map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            {copyableField('Thời hạn', 'expiryDate', localData.expiryDate || "", "text", "dd/mm/yyyy")}
+            {copyableField('Cơ quan cấp', 'issuer', localData.issuer || "", "text", "Sở Giao thông vận tải...")}
+            {copyableField('Ngày cấp', 'issueDate', localData.issueDate || "", "text", "dd/mm/yyyy")}
+          </>
+        );
+      case 'passport':
+        return (
+          <>
+             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">Loại (Type)</label><input disabled={isView} value={localData.passportType || 'P'} onChange={e => setLocalData({...localData, passportType: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" /></div>
+              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">Mã số (Code)</label><input disabled={isView} value={localData.passportCode || 'VNM'} onChange={e => setLocalData({...localData, passportCode: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" /></div>
+            </div>
+            {copyableField('Số hộ chiếu', 'idNumber', localData.idNumber || "", "text", "P1234567")}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "NGUYEN VAN A")}
+            {copyableField('Quốc tịch', 'nationality', localData.nationality || "", "text", "VIỆT NAM / VIETNAMESE")}
+            {copyableField(t.dob, 'dob', localData.dob || "", "text", "dd/mm/yyyy")}
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.gender}</label>
+              <select 
+                disabled={isView} 
+                value={localData.gender} 
+                onChange={e => setLocalData({...localData, gender: e.target.value})} 
+                className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.gender ? 'text-gray-500' : 'text-white'}`}
+              >
+                <option value="" className="text-gray-500">{t.chooseGender}</option>
+                <option value="M">Nam (M)</option>
+                <option value="F">Nữ (F)</option>
+              </select>
+            </div>
+            {copyableField('Số định danh cá nhân', 'pin', localData.pin || "", "text", "12 số Căn cước")}
+            {copyableField('Nơi sinh', 'placeOfBirth', localData.placeOfBirth || "", "text", "Hà Tĩnh")}
+            {copyableField('Ngày cấp', 'issueDate', localData.issueDate || "", "text", "dd/mm/yyyy")}
+            {copyableField('Ngày hết hạn', 'expiryDate', localData.expiryDate || "", "text", "dd/mm/yyyy")}
+            {copyableField('Cơ quan cấp', 'issuer', localData.issuer || "", "text", "Cục Quản lý xuất nhập cảnh")}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-[#0d0d0d] z-[100] flex flex-col animate-in slide-in-from-bottom-5">
       <header className="h-16 border-b border-white/5 flex items-center px-4 justify-between bg-[#111]">
         <button onClick={onClose} className="p-2 text-gray-500 hover:text-white"><Icons.ChevronLeft size={24} /></button>
-        <h2 className="text-[10px] font-black text-white uppercase tracking-widest">{typeLabels[localData.type] || t.vaultTab}</h2>
+        <h2 className="text-[10px] font-black text-white uppercase tracking-widest">
+          {localData.type === 'document' ? t.addDocument : typeLabels[localData.type]}
+        </h2>
         {!isView ? <button onClick={() => onSave(localData)} className="bg-[#4CAF50] text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-[#4CAF50]/20">{t.save}</button> : <div className="w-10"/>}
       </header>
       <main className="flex-1 overflow-y-auto p-6 space-y-5 pb-safe">
         <div className="max-w-md mx-auto space-y-4">
           
-          {localData.type !== 'contact' && (
-            <div className="space-y-1">
-              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.title}*</label>
-              <input disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white focus:border-[#4CAF50]/40 outline-none" placeholder={t.titleHint} />
-            </div>
-          )}
-          
           {localData.type === 'login' && (
             <>
               <div className="space-y-1">
+                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.title}*</label>
+                <input disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white focus:border-[#4CAF50]/40 outline-none" placeholder={t.loginTitleHint} />
+              </div>
+              <div className="space-y-1">
                 <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.groupLabel}</label>
-                <select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none">
-                  <option value="---">---</option>
-                  {settings.folders.map(f => <option key={f} value={f}>{f}</option>)}
+                <select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none">
+                  <option value="---" className="bg-[#161616]">---</option>
+                  {settings.folders.map(f => <option key={f} value={f} className="bg-[#161616]">{f}</option>)}
                 </select>
               </div>
+              {currentSubFolders.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.subGroupLabel}</label>
+                  <select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.subGroup ? 'text-gray-500 font-medium' : 'text-white font-bold'}`}>
+                    <option value="" className="bg-[#161616]">-- Chọn nhóm con --</option>
+                    {currentSubFolders.map((s: string) => <option key={s} value={s} className="bg-[#161616]">{s}</option>)}
+                  </select>
+                </div>
+              )}
               {copyableField(t.username, 'username', localData.username || "")}
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.password}</label>
@@ -1112,10 +1387,10 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.expiryInterval}</label>
                 <select disabled={isView} value={localData.expiryInterval} onChange={e => setLocalData({...localData, expiryInterval: e.target.value})} className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && localData.expiryInterval === '6m' ? 'text-gray-500 font-medium' : 'text-white font-bold'}`}>
-                  <option value="1d">{t.day}</option>
-                  <option value="1m">{t.month}</option>
-                  <option value="6m">{t.sixMonths}</option>
-                  <option value="1y">{t.year}</option>
+                  <option value="1d" className="bg-[#161616]">{t.day}</option>
+                  <option value="1m" className="bg-[#161616]">{t.month}</option>
+                  <option value="6m" className="bg-[#161616]">{t.sixMonths}</option>
+                  <option value="1y" className="bg-[#161616]">{t.year}</option>
                 </select>
               </div>
               <div className="pt-2">
@@ -1134,10 +1409,7 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
                         )}
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label>
-                      <textarea disabled={isView} rows={4} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" />
-                    </div>
+                    <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={4} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
                   </div>
                 )}
               </div>
@@ -1146,6 +1418,20 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
 
           {localData.type === 'card' && (
             <>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.title}</label>
+                <select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.title ? 'text-gray-500 font-medium' : 'text-white font-bold'}`}>
+                  <option value="" className="bg-[#161616]">-- Chọn ngân hàng --</option>
+                  {(settings.subFolders['Ngân hàng'] || []).map((b: string) => <option key={b} value={b} className="bg-[#161616]">{b}</option>)}
+                  <option value="Khác" className="bg-[#161616]">Khác</option>
+                </select>
+              </div>
+              {localData.title === 'Khác' && (
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.title} (Chi tiết)</label>
+                  <input disabled={isView} value={localData.customTitle} onChange={e => setLocalData({...localData, customTitle: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" placeholder="Thẻ Siêu thị Winmart, Thẻ tích điểm ..." />
+                </div>
+              )}
               {copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "text", "0000 0000 0000 0000")}
               {copyableField(t.cardName, 'cardHolder', localData.cardHolder || "", "text", t.cardNameHint)}
               <div className="grid grid-cols-2 gap-4">
@@ -1155,25 +1441,25 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
                     disabled={isView} 
                     value={localData.cardType} 
                     onChange={e => setLocalData({...localData, cardType: e.target.value})} 
-                    className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && localData.cardType === 'ATM' ? 'text-gray-500 font-medium' : 'text-white font-bold'}`}
+                    className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.cardType ? 'text-gray-500' : 'text-white font-bold'}`}
                   >
-                    <option value="ATM">ATM</option>
-                    <option value="Visa Debit">Visa Debit</option>
-                    <option value="Master Card">Master Card</option>
-                    <option value="JCB">JCB</option>
-                    <option value="Khác">Khác</option>
+                    <option value="" className="text-gray-500 bg-[#161616]">{t.chooseCardType}</option>
+                    <option value="Thường" className="bg-[#161616]">Thường</option>
+                    <option value="Visa" className="bg-[#161616]">Visa</option>
+                    <option value="Debit" className="bg-[#161616]">Debit</option>
+                    <option value="Master" className="bg-[#161616]">Master</option>
+                    <option value="Tích điểm" className="bg-[#161616]">Tích điểm</option>
+                    <option value="Gold" className="bg-[#161616]">Gold</option>
+                    <option value="Diamon" className="bg-[#161616]">Diamon</option>
+                    <option value="Khác" className="bg-[#161616]">Khác</option>
                   </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.expiryMonth}</label>
-                  <input disabled={isView} value={localData.expiryMonth} onChange={e => setLocalData({...localData, expiryMonth: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none focus:border-[#4CAF50]/40" placeholder="MM/YY" />
+                  <input disabled={isView} value={localData.expiryMonth} onChange={e => setLocalData({...localData, expiryMonth: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" placeholder="MM/YY" />
                 </div>
               </div>
-              {copyableField(t.pinCode, 'pin', localData.pin || "", "password", "0000")}
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label>
-                <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" />
-              </div>
+              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
             </>
           )}
           
@@ -1190,17 +1476,31 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
               {copyableField(t.phone, 'phone', localData.phone || "")}
               {copyableField(t.email, 'email', localData.email || "")}
               {copyableField(t.address, 'address', localData.address || "", "text", t.addressHint)}
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label>
-                <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" />
-              </div>
+              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
             </>
           )}
 
-          {localData.type === 'note' && (
-            <div className="space-y-1">
-              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.content}</label>
-              <textarea disabled={isView} rows={15} value={localData.content} onChange={e => setLocalData({...localData, content: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none leading-relaxed h-[60vh] focus:border-[#4CAF50]/30 shadow-inner" />
+          {localData.type === 'document' && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.docType}</label>
+                <select 
+                  disabled={isView} 
+                  value={localData.documentType} 
+                  onChange={e => setLocalData({...localData, documentType: e.target.value})} 
+                  className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.documentType ? 'text-gray-500' : 'text-white'}`}
+                >
+                  <option value="" className="text-gray-500 bg-[#161616]">{t.chooseDocType}</option>
+                  <option value="id_card" className="bg-[#161616]">{t.idCard}</option>
+                  <option value="health_insurance" className="bg-[#161616]">{t.healthInsurance}</option>
+                  <option value="driving_license" className="bg-[#161616]">{t.drivingLicense}</option>
+                  <option value="passport" className="bg-[#161616]">{t.passport}</option>
+                  <option value="residence_card" className="bg-[#161616]">{t.residenceCard}</option>
+                </select>
+              </div>
+              <div className="h-px bg-white/5 w-full my-4" />
+              {renderDocumentFields()}
+              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
             </div>
           )}
         </div>
