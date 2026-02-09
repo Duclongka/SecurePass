@@ -6,9 +6,6 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
         base: '/SecurePass/',
-<<<<<<< HEAD
-=======
-        >>>>>>> 860656f445990d73d985fe8b5a962025b18c7d8e
       server: {
         port: 3000,
         host: '0.0.0.0',
