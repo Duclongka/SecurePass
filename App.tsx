@@ -140,9 +140,15 @@ const translations = {
     uppercaseWarning: 'Please enter UPPERCASE letters',
     indefinite: 'Indefinite',
     chooseDocType: '-- Choose Document Type --',
-    chooseCardType: '-Chọn Loại thẻ-',
+    chooseCardType: '-Choose Card Type-',
     chooseGender: '-- Choose Gender --',
-    chooseClass: '-- Choose Class --'
+    chooseClass: '-- Choose Class --',
+    themeLabel: 'Appearance',
+    themeDark: 'Dark Mode',
+    themeLight: 'Light Mode',
+    langEn: 'English',
+    langVi: 'Vietnamese',
+    createQRCode: 'Create QR Code'
   },
   vi: {
     appTitle: 'SecurePass',
@@ -279,7 +285,13 @@ const translations = {
     chooseDocType: '-- Chọn loại giấy tờ --',
     chooseCardType: '-Chọn Loại thẻ-',
     chooseGender: '-- Chọn giới tính --',
-    chooseClass: '-- Chọn hạng --'
+    chooseClass: '-- Chọn hạng --',
+    themeLabel: 'Giao diện',
+    themeDark: 'Chế độ tối',
+    themeLight: 'Chế độ sáng',
+    langEn: 'Tiếng Anh',
+    langVi: 'Tiếng Việt',
+    createQRCode: 'Tạo QR Code'
   }
 };
 
@@ -348,6 +360,7 @@ const App: React.FC = () => {
       clearClipboardEnabled: true,
       biometricEnabled: true,
       language: 'vi',
+      theme: 'dark',
       groups: ['Banking', 'Shopping', 'Study', 'Game'],
       folders: DEFAULT_FOLDERS,
       subFolders: DEFAULT_SUBFOLDERS,
@@ -356,6 +369,7 @@ const App: React.FC = () => {
     return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
   });
 
+  const isDark = settings.theme === 'dark';
   const t = translations[settings.language];
 
   useEffect(() => {
@@ -560,10 +574,11 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-full bg-[#0d0d0d] flex flex-col overflow-hidden selection:bg-[#4CAF50]/20 selection:text-[#4CAF50]">
+    <div className={`h-full flex flex-col overflow-hidden selection:bg-[#4CAF50]/20 selection:text-[#4CAF50] transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-[#1a1a1a]'}`}>
       {isLocked ? (
         <LoginScreen 
           t={t} 
+          isDark={isDark}
           masterPassword={masterPassword} 
           setMasterPassword={setMasterPassword} 
           handleLogin={handleLogin} 
@@ -575,6 +590,7 @@ const App: React.FC = () => {
           {view === 'vault' && (
             <VaultScreen 
               t={t} 
+              isDark={isDark}
               entries={entries} 
               searchQuery={searchQuery} 
               setSearchQuery={setSearchQuery} 
@@ -591,6 +607,7 @@ const App: React.FC = () => {
           {view === 'generator' && (
             <GeneratorScreen 
               t={t} 
+              isDark={isDark}
               genPass={genPass} 
               genConfig={genConfig} 
               setGenConfig={setGenConfig} 
@@ -604,6 +621,7 @@ const App: React.FC = () => {
           {view === 'settings' && (
             <SettingsScreen 
               t={t} 
+              isDark={isDark}
               settings={settings} 
               setSettings={setSettings} 
               handleLock={handleLock} 
@@ -630,23 +648,23 @@ const App: React.FC = () => {
                 <button onClick={() => { setIsAdding('contact'); setShowPlusMenu(false); }} className="w-56 bg-[#4CAF50] text-white px-6 py-4 rounded-3xl font-bold shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all">
                   <Icons.Smartphone size={20} /> {t.addContact}
                 </button>
-                <button onClick={() => setShowPlusMenu(false)} className="mt-4 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white active:scale-90 transition-all shadow-lg">
+                <button onClick={() => setShowPlusMenu(false)} className={`mt-4 w-12 h-12 ${isDark ? 'bg-white/10' : 'bg-black/10'} rounded-full flex items-center justify-center ${isDark ? 'text-white' : 'text-black'} active:scale-90 transition-all shadow-lg`}>
                   <Icons.X size={24} />
                 </button>
               </div>
             </div>
           )}
 
-          <nav className="h-16 bg-[#111] border-t border-white/5 flex items-center justify-around px-4 sticky bottom-0 z-[70] pb-safe">
-            <button onClick={() => setView('vault')} className={`flex flex-col items-center p-3 transition-colors ${view === 'vault' ? 'text-[#4CAF50]' : 'text-gray-700'}`}>
+          <nav className={`h-16 border-t flex items-center justify-around px-4 sticky bottom-0 z-[70] pb-safe transition-colors duration-500 ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5'}`}>
+            <button onClick={() => setView('vault')} className={`flex flex-col items-center p-3 transition-colors ${view === 'vault' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}>
               <Icons.Database size={24} />
             </button>
             <div className="relative">
-               <button onClick={() => setShowPlusMenu(!showPlusMenu)} className="w-16 h-16 bg-[#4CAF50] rounded-[2rem] flex items-center justify-center text-white shadow-xl shadow-[#4CAF50]/20 -translate-y-6 active:scale-90 transition-all border-4 border-[#0d0d0d]">
+               <button onClick={() => setShowPlusMenu(!showPlusMenu)} className={`w-16 h-16 bg-[#4CAF50] rounded-[2rem] flex items-center justify-center text-white shadow-xl shadow-[#4CAF50]/20 -translate-y-6 active:scale-90 transition-all border-4 ${isDark ? 'border-[#0d0d0d]' : 'border-[#f5f5f5]'}`}>
                 <Icons.Plus size={32} className={`transition-transform duration-300 ${showPlusMenu ? 'rotate-45' : ''}`} />
               </button>
             </div>
-            <button onClick={() => { setView('generator'); if(!genPass) handleGenerator(); }} className={`flex flex-col items-center p-3 transition-colors ${view === 'generator' ? 'text-[#4CAF50]' : 'text-gray-700'}`}>
+            <button onClick={() => { setView('generator'); if(!genPass) handleGenerator(); }} className={`flex flex-col items-center p-3 transition-colors ${view === 'generator' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}>
               <Icons.RefreshCw size={24} />
             </button>
           </nav>
@@ -654,6 +672,7 @@ const App: React.FC = () => {
           {(isAdding || isEditing || selectedEntry) && (
             <EntryModal 
               t={t} 
+              isDark={isDark}
               settings={settings}
               mode={isEditing ? 'edit' : isAdding ? 'add' : 'view'} 
               entry={isEditing || selectedEntry || undefined} 
@@ -669,6 +688,7 @@ const App: React.FC = () => {
       {isMasterModalOpen && (
         <MasterPasswordModal 
           t={t} 
+          isDark={isDark}
           onClose={() => setIsMasterModalOpen(false)} 
           setMasterPassword={handleMasterPasswordChange} 
           masterPassword={masterPassword}
@@ -685,14 +705,14 @@ const App: React.FC = () => {
 };
 
 /* --- Login Screen --- */
-const LoginScreen = ({ t, masterPassword, setMasterPassword, handleLogin, handleKeyFileLogin, setIsMasterModalOpen }: any) => (
-  <div className="h-full w-full flex flex-col items-center justify-center bg-[#0a0a0a] p-6">
-    <div className="w-full max-sm bg-[#121212] rounded-[2.5rem] p-8 border border-white/5 shadow-2xl">
+const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleKeyFileLogin, setIsMasterModalOpen }: any) => (
+  <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
+    <div className={`w-full max-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
       <div className="flex flex-col items-center mb-8">
         <div className="w-16 h-16 bg-[#4CAF50] rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-[#4CAF50]/10">
           <Icons.Lock className="text-white w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">{t.appTitle}</h1>
+        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.appTitle}</h1>
         <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1 text-center">{t.unlockSubtitle}</p>
       </div>
       <form onSubmit={handleLogin} className="space-y-4">
@@ -702,22 +722,22 @@ const LoginScreen = ({ t, masterPassword, setMasterPassword, handleLogin, handle
           placeholder={t.masterPassword}
           value={masterPassword}
           onChange={(e) => setMasterPassword(e.target.value)}
-          className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white focus:border-[#4CAF50]/40 transition-all outline-none"
+          className={`w-full border rounded-2xl py-4 px-6 text-sm focus:border-[#4CAF50]/40 transition-all outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}
         />
         <button type="submit" className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
           <Icons.Unlock size={18} /> {t.unlockVault}
         </button>
-        <button type="button" onClick={() => handleLogin()} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border border-white/5 transition-all text-sm mt-2">
+        <button type="button" onClick={() => handleLogin()} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm mt-2 ${isDark ? 'bg-white/5 hover:bg-white/10 text-white border-white/5' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'}`}>
           <Icons.Fingerprint size={20} className="text-[#4CAF50]" /> {t.biometricUnlock}
         </button>
         
         <div className="pt-4 space-y-3">
-          <label className="flex items-center justify-center gap-2 text-gray-500 text-xs font-bold cursor-pointer hover:text-white transition-all">
+          <label className={`flex items-center justify-center gap-2 text-xs font-bold cursor-pointer hover:opacity-80 transition-all ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
             <Icons.Database size={16} className="text-[#4CAF50]" /> {t.chooseKeyFile}
             <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileLogin} />
           </label>
           <div className="text-center pt-2">
-            <p className="text-gray-700 text-[10px] uppercase font-bold tracking-widest">{t.noMasterPassYet}</p>
+            <p className={`text-[10px] uppercase font-bold tracking-widest ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.noMasterPassYet}</p>
             <button type="button" onClick={() => setIsMasterModalOpen(true)} className="text-[#4CAF50] text-xs font-black mt-1 hover:underline">{t.createOne}</button>
           </div>
         </div>
@@ -727,7 +747,7 @@ const LoginScreen = ({ t, masterPassword, setMasterPassword, handleLogin, handle
 );
 
 /* --- Vault Screen --- */
-const VaultScreen = ({ t, entries, searchQuery, setSearchQuery, activeCategory, setActiveCategory, setSelectedEntry, setIsEditing, copy, deleteEntry, settings, setView }: any) => {
+const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCategory, setActiveCategory, setSelectedEntry, setIsEditing, copy, deleteEntry, settings, setView }: any) => {
   const [isFoldersOpen, setIsFoldersOpen] = useState(false);
   const [showMoreFrequent, setShowMoreFrequent] = useState(false);
 
@@ -766,19 +786,19 @@ const VaultScreen = ({ t, entries, searchQuery, setSearchQuery, activeCategory, 
   settings.folders.forEach((f: string) => folderCounts[f] = entries.filter((e: any) => e.group === f).length);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0d0d0d]">
-      <header className="sticky top-0 z-40 h-16 border-b border-white/5 flex items-center px-6 justify-between bg-[#111]/90 backdrop-blur-xl">
+    <div className="flex-1 flex flex-col h-full">
+      <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-6 justify-between backdrop-blur-xl transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
         <div className="flex-1 max-sm relative">
-          <Icons.Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700" size={16} />
+          <Icons.Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-700' : 'text-gray-400'}`} size={16} />
           <input 
             type="text" 
             placeholder={t.searchPlaceholder} 
             value={searchQuery} 
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#1a1a1a] border border-white/5 rounded-full py-2.5 pl-12 pr-4 text-xs text-white focus:outline-none focus:border-[#4CAF50]/40 transition-all"
+            className={`w-full border rounded-full py-2.5 pl-12 pr-4 text-xs focus:outline-none focus:border-[#4CAF50]/40 transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}
           />
         </div>
-        <button onClick={() => setView('settings')} className="ml-4 p-2 text-gray-500 hover:text-white"><Icons.Settings size={22} /></button>
+        <button onClick={() => setView('settings')} className={`ml-4 p-2 transition-colors ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}><Icons.Settings size={22} /></button>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 pb-32">
@@ -788,19 +808,19 @@ const VaultScreen = ({ t, entries, searchQuery, setSearchQuery, activeCategory, 
               <Icons.ChevronLeft size={18} /> {searchQuery ? 'Back' : activeCategory.val}
             </button>
             {filteredEntries.map((entry: any) => (
-              <EntryItem key={entry.id} entry={entry} isExpired={isExpired(entry)} t={t} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} />
+              <EntryItem key={entry.id} isDark={isDark} entry={entry} isExpired={isExpired(entry)} t={t} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} />
             ))}
           </div>
         ) : (
           <>
             <section>
-              <h3 className="text-[10px] font-black text-gray-700 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-1"><Icons.Star size={12}/> {t.frequentHeader}</h3>
+              <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-1 ${isDark ? 'text-gray-700' : 'text-gray-400'}`}><Icons.Star size={12}/> {t.frequentHeader}</h3>
               <div className="space-y-2">
                 {frequentEntries.map((entry: any) => (
-                  <EntryItem key={entry.id} entry={entry} isExpired={isExpired(entry)} t={t} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} />
+                  <EntryItem key={entry.id} isDark={isDark} entry={entry} isExpired={isExpired(entry)} t={t} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} />
                 ))}
                 {frequentEntriesFull.length > 5 && (
-                  <button onClick={() => setShowMoreFrequent(!showMoreFrequent)} className="w-full py-3 text-[#4CAF50] text-[10px] font-black uppercase tracking-widest bg-white/5 rounded-2xl border border-dashed border-white/10 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                  <button onClick={() => setShowMoreFrequent(!showMoreFrequent)} className={`w-full py-3 text-[#4CAF50] text-[10px] font-black uppercase tracking-widest rounded-2xl border border-dashed flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10' : 'bg-gray-100 border-gray-300'}`}>
                     {showMoreFrequent ? <><Icons.ChevronUp size={14}/> {t.seeLess}</> : <><Icons.ChevronDown size={14}/> {t.seeMore}</>}
                   </button>
                 )}
@@ -808,40 +828,40 @@ const VaultScreen = ({ t, entries, searchQuery, setSearchQuery, activeCategory, 
             </section>
 
             <section>
-              <h3 className="text-[10px] font-black text-gray-700 uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-1"><Icons.Shield size={12}/> {t.typesHeader}</h3>
+              <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2 px-1 ${isDark ? 'text-gray-700' : 'text-gray-400'}`}><Icons.Shield size={12}/> {t.typesHeader}</h3>
               <div className="space-y-2">
                 {['login', 'card', 'document', 'contact'].map(id => (
-                  <button key={id} onClick={() => setActiveCategory({ type: 'type', val: id })} className="w-full flex items-center justify-between p-4 bg-[#161616] rounded-2xl border border-white/5 hover:border-[#4CAF50]/30 transition-all active:scale-[0.98]">
+                  <button key={id} onClick={() => setActiveCategory({ type: 'type', val: id })} className={`w-full flex items-center justify-between p-4 rounded-2xl border hover:border-[#4CAF50]/30 transition-all active:scale-[0.98] ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
                     <div className="flex items-center gap-3">
                       <div className="text-[#4CAF50]">
                         {id === 'login' ? <Icons.User size={18}/> : id === 'card' ? <Icons.CreditCard size={18}/> : id === 'contact' ? <Icons.Smartphone size={18}/> : <Icons.FileText size={18}/>}
                       </div>
-                      <span className="text-sm font-bold text-white capitalize">{t[`type${id.charAt(0).toUpperCase() + id.slice(1)}` as keyof typeof t] || id}</span>
+                      <span className={`text-sm font-bold capitalize ${isDark ? 'text-white' : 'text-gray-800'}`}>{t[`type${id.charAt(0).toUpperCase() + id.slice(1)}` as keyof typeof t] || id}</span>
                     </div>
-                    <span className="text-[11px] text-gray-500 font-bold bg-white/5 w-8 h-8 flex items-center justify-center rounded-xl">{entries.filter((e: any) => e.type === id).length}</span>
+                    <span className={`text-[11px] font-bold w-8 h-8 flex items-center justify-center rounded-xl ${isDark ? 'text-gray-500 bg-white/5' : 'text-gray-400 bg-gray-100'}`}>{entries.filter((e: any) => e.type === id).length}</span>
                   </button>
                 ))}
               </div>
             </section>
 
-            <section className="bg-[#161616] border border-white/5 rounded-3xl p-0.5 shadow-lg">
+            <section className={`border rounded-3xl p-0.5 shadow-lg ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
               <button 
                 onClick={() => setIsFoldersOpen(!isFoldersOpen)}
                 className="w-full flex items-center justify-between py-3 px-6"
               >
-                <h3 className="text-[10px] font-black text-gray-700 uppercase tracking-[0.2em] flex items-center gap-2"><Icons.Folder size={12}/> {t.foldersHeader}</h3>
-                <Icons.ChevronDown size={22} className={`text-gray-500 transition-transform duration-300 ${isFoldersOpen ? '' : '-rotate-90'}`} />
+                <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${isDark ? 'text-gray-700' : 'text-gray-400'}`}><Icons.Folder size={12}/> {t.foldersHeader}</h3>
+                <Icons.ChevronDown size={22} className={`transition-transform duration-300 ${isDark ? 'text-gray-500' : 'text-gray-400'} ${isFoldersOpen ? '' : '-rotate-90'}`} />
               </button>
               
               {isFoldersOpen && (
                 <div className="space-y-1 px-1.5 pb-2 animate-in slide-in-from-top-1 duration-200">
                   {settings.folders.map((f: string) => (
-                    <button key={f} onClick={() => setActiveCategory({ type: 'folder', val: f })} className="w-full flex items-center justify-between py-2 px-4 bg-white/5 rounded-xl border border-transparent hover:border-[#4CAF50]/10 transition-all active:scale-[0.98]">
+                    <button key={f} onClick={() => setActiveCategory({ type: 'folder', val: f })} className={`w-full flex items-center justify-between py-2 px-4 rounded-xl border border-transparent hover:border-[#4CAF50]/10 transition-all active:scale-[0.98] ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-2.5">
                         <Icons.Folder size={14} className="text-[#4CAF50]" />
-                        <span className="text-[11px] font-bold text-white/70">{f}</span>
+                        <span className={`text-[11px] font-bold ${isDark ? 'text-white/70' : 'text-gray-700'}`}>{f}</span>
                       </div>
-                      <span className="text-[9px] text-gray-500 font-bold bg-white/5 px-2 h-5 flex items-center justify-center rounded-md">{folderCounts[f]}</span>
+                      <span className={`text-[9px] font-bold px-2 h-5 flex items-center justify-center rounded-md ${isDark ? 'text-gray-500 bg-white/5' : 'text-gray-400 bg-gray-200'}`}>{folderCounts[f]}</span>
                     </button>
                   ))}
                 </div>
@@ -855,27 +875,27 @@ const VaultScreen = ({ t, entries, searchQuery, setSearchQuery, activeCategory, 
 };
 
 /* --- Entry Item --- */
-const EntryItem = ({ entry, isExpired, t, setSelectedEntry, setIsEditing, copy, deleteEntry }: any) => (
+const EntryItem = ({ isDark, entry, isExpired, t, setSelectedEntry, setIsEditing, copy, deleteEntry }: any) => (
   <div 
     onClick={() => setSelectedEntry(entry)}
-    className={`bg-[#181818] border rounded-2xl p-4 flex items-center justify-between group hover:border-[#4CAF50]/30 transition-all cursor-pointer ${isExpired ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)]' : 'border-white/5'}`}
+    className={`border rounded-2xl p-4 flex items-center justify-between group hover:border-[#4CAF50]/30 transition-all cursor-pointer ${isDark ? 'bg-[#181818]' : 'bg-white shadow-sm'} ${isExpired ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)]' : (isDark ? 'border-white/5' : 'border-gray-200')}`}
   >
     <div className="flex items-center gap-3 overflow-hidden">
-      <div className={`shrink-0 w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center ${isExpired ? 'text-red-500' : 'text-[#4CAF50]'}`}>
+      <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${isExpired ? 'text-red-500' : 'text-[#4CAF50]'} ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
         {entry.type === 'login' ? <Icons.User size={20} /> : entry.type === 'card' ? <Icons.CreditCard size={20} /> : entry.type === 'contact' ? <Icons.Smartphone size={20} /> : <Icons.FileText size={20} />}
       </div>
       <div className="overflow-hidden">
-        <h4 className="text-sm font-bold text-white truncate leading-tight flex items-center gap-2">
+        <h4 className={`text-sm font-bold truncate leading-tight flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {entry.title || entry.nickname || entry.fullName || (entry.documentType ? t[entry.documentType] : 'Item')}
           {isExpired && <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"/>}
         </h4>
-        <p className={`text-[10px] uppercase tracking-tighter mt-1 truncate ${isExpired ? 'text-red-500 font-bold' : 'text-gray-600'}`}>
+        <p className={`text-[10px] uppercase tracking-tighter mt-1 truncate ${isExpired ? 'text-red-500 font-bold' : (isDark ? 'text-gray-600' : 'text-gray-400')}`}>
           {isExpired ? t.expiredWarning : (entry.username || entry.nickname || entry.cardHolder || entry.idNumber || '...')}
         </p>
       </div>
     </div>
     <div className="flex items-center gap-1 shrink-0">
-      <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-white transition-colors"><Icons.Pencil size={16} /></button>
+      <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Pencil size={16} /></button>
       <button onClick={(e) => { e.stopPropagation(); copy(entry.password || entry.cardNumber || entry.phone || entry.idNumber || ''); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={16} /></button>
       <button onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><Icons.Trash2 size={16} /></button>
     </div>
@@ -883,7 +903,7 @@ const EntryItem = ({ entry, isExpired, t, setSelectedEntry, setIsEditing, copy, 
 );
 
 /* --- Master Password Modal --- */
-const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: any) => {
+const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, masterPassword }: any) => {
   const [newMP, setNewMP] = useState('');
   const [confirmMP, setConfirmMP] = useState('');
   const [showMP, setShowMP] = useState(false);
@@ -931,18 +951,18 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
   if (isSuccess) {
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-6 animate-in fade-in duration-300 text-center">
-        <div className="w-full max-w-md bg-[#121212] rounded-[2.5rem] border border-white/10 p-8 space-y-6 shadow-2xl scale-in-center">
+        <div className={`w-full max-w-md rounded-[2.5rem] border p-8 space-y-6 shadow-2xl scale-in-center ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
           <div className="w-16 h-16 bg-[#4CAF50]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Icons.Check className="text-[#4CAF50]" size={32}/>
           </div>
-          <h2 className="text-xl font-black text-white tracking-tight">{t.success}</h2>
+          <h2 className={`text-xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.success}</h2>
           <p className="text-xs text-gray-500 leading-relaxed font-medium px-4">{t.saveKeyWarning}</p>
           <div className="space-y-3 pt-4">
             <button onClick={exportKeyFile} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs active:scale-95 shadow-lg shadow-[#4CAF50]/20 flex items-center justify-center gap-2">
               <Icons.Download size={16}/> {t.saveKeyFile}
             </button>
-            <button onClick={onClose} className="w-full bg-white/5 text-gray-400 py-4 rounded-3xl font-bold uppercase tracking-widest text-[10px] border border-white/5">
-              ĐÓNG
+            <button onClick={onClose} className={`w-full py-4 rounded-3xl font-bold uppercase tracking-widest text-[10px] border ${isDark ? 'bg-white/5 text-gray-400 border-white/5' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              CLOSE
             </button>
           </div>
         </div>
@@ -952,10 +972,10 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-6 animate-in fade-in duration-300">
-      <div className="w-full max-w-md bg-[#121212] rounded-[2.5rem] border border-white/10 p-8 space-y-6 shadow-2xl scale-in-center">
+      <div className={`w-full max-w-md rounded-[2.5rem] border p-8 space-y-6 shadow-2xl scale-in-center ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-black text-white tracking-tight">{t.createMasterPass}</h2>
-          <button onClick={onClose} className="p-2 text-gray-500 hover:text-white"><Icons.X size={24}/></button>
+          <h2 className={`text-xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.createMasterPass}</h2>
+          <button onClick={onClose} className="p-2 text-gray-500 hover:text-[#4CAF50]"><Icons.X size={24}/></button>
         </div>
         <div className="space-y-4">
           <div className="space-y-1">
@@ -965,11 +985,11 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
                 placeholder={t.newMasterPass} 
                 value={newMP} 
                 onChange={e => { setNewMP(e.target.value); setIsGenerated(false); }} 
-                className={`w-full bg-[#1a1a1a] border rounded-2xl py-4 pl-12 pr-24 text-sm text-white outline-none transition-all ${newMP && !passwordRegex.test(newMP) ? 'border-red-500/50' : 'border-white/5 focus:border-[#4CAF50]/40'}`}
+                className={`w-full border rounded-2xl py-4 pl-12 pr-24 text-sm outline-none transition-all ${newMP && !passwordRegex.test(newMP) ? 'border-red-500/50' : (isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/40' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/40')}`}
               />
               <Icons.Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700" size={16}/>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <button onClick={() => setShowMP(!showMP)} className="p-2 text-gray-600 hover:text-white">{showMP ? <Icons.EyeOff size={16}/> : <Icons.Eye size={16}/>}</button>
+                <button onClick={() => setShowMP(!showMP)} className="p-2 text-gray-600 hover:text-[#4CAF50]">{showMP ? <Icons.EyeOff size={16}/> : <Icons.Eye size={16}/>}</button>
                 <button onClick={handleRandom} className="p-2 text-[#4CAF50] active:rotate-180 transition-transform"><Icons.RefreshCw size={16}/></button>
               </div>
             </div>
@@ -990,9 +1010,9 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
                   placeholder={t.confirmMasterPass} 
                   value={confirmMP} 
                   onChange={e => setConfirmMP(e.target.value)} 
-                  className={`w-full bg-[#1a1a1a] border rounded-2xl py-4 px-6 text-sm text-white outline-none transition-all ${confirmMP && newMP !== confirmMP ? 'border-red-500/50' : 'border-white/5 focus:border-[#4CAF50]/40'}`}
+                  className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${confirmMP && newMP !== confirmMP ? 'border-red-500/50' : (isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/40' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/40')}`}
                 />
-                <button onClick={() => setShowConfirmMP(!showConfirmMP)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white">{showConfirmMP ? <Icons.EyeOff size={16}/> : <Icons.Eye size={16}/>}</button>
+                <button onClick={() => setShowConfirmMP(!showConfirmMP)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#4CAF50]">{showConfirmMP ? <Icons.EyeOff size={16}/> : <Icons.Eye size={16}/>}</button>
               </div>
               {confirmMP && newMP !== confirmMP && <p className="text-[10px] text-red-500 font-bold px-1">{t.passwordMismatch}</p>}
             </div>
@@ -1011,7 +1031,7 @@ const MasterPasswordModal = ({ t, onClose, setMasterPassword, masterPassword }: 
 };
 
 /* --- Settings Screen --- */
-const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMasterModalOpen, masterPassword, handleImport, handleExport }: any) => {
+const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView, setIsMasterModalOpen, masterPassword, handleImport, handleExport }: any) => {
   const [newF, setNewF] = useState('');
   const [newSub, setNewSub] = useState('');
   const [selectedRoot, setSelectedRoot] = useState('');
@@ -1077,56 +1097,64 @@ const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMa
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0d0d0d] h-full overflow-hidden">
-      <header className="sticky top-0 z-40 h-16 border-b border-white/5 flex items-center px-6 justify-between bg-[#111]/90 backdrop-blur-xl">
-        <button onClick={() => setView('vault')} className="p-2 text-gray-500 hover:text-white"><Icons.ChevronLeft size={24} /></button>
-        <h2 className="text-lg font-bold text-white tracking-tight">{t.settingsTab}</h2>
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-6 justify-between backdrop-blur-xl transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
+        <button onClick={() => setView('vault')} className={`p-2 transition-colors ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}><Icons.ChevronLeft size={24} /></button>
+        <h2 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.settingsTab}</h2>
         <div className="w-10"></div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pb-32">
         <div className="max-w-xl mx-auto space-y-6">
-          <section className="bg-[#161616] rounded-[2.5rem] p-8 border border-white/5 space-y-4 text-center shadow-lg">
-            <h4 className="text-xl font-black text-white tracking-tight">{t.appTitle}</h4>
+          <section className={`rounded-[2.5rem] p-8 border text-center shadow-lg transition-colors duration-500 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
+            <h4 className={`text-xl font-black tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.appTitle}</h4>
             <p className="text-[11px] text-gray-600 font-medium italic">"{t.safeQuote}"</p>
-            <div className="h-px bg-white/5 w-full my-2" />
+            <div className={`h-px w-full my-2 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`} />
             <div className="space-y-1">
-              <p className="text-[9px] text-gray-700 font-bold uppercase tracking-widest">{t.version}</p>
-              <p className="text-[13px] text-gray-400 font-bold">{t.createdBy}</p>
+              <p className={`text-[9px] font-bold uppercase tracking-widest ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.version}</p>
+              <p className={`text-[13px] font-bold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{t.createdBy}</p>
               <p className="text-[13px] text-[#4CAF50] font-bold">{t.contactInfo}</p>
             </div>
           </section>
 
-          <section className="bg-[#161616] rounded-[2.5rem] p-6 border border-white/5 space-y-4 shadow-xl">
-            <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2"><Icons.Folder size={14}/> {t.foldersHeader}</h3>
+          {/* Restored Master Password Management */}
+          <section className={`rounded-[2.5rem] p-6 border shadow-xl transition-colors duration-500 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
+            <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2 mb-4"><Icons.Lock size={14}/> {t.createMasterPass}</h3>
+            <button onClick={() => setIsMasterModalOpen(true)} className="w-full bg-[#4CAF50] text-white py-4 rounded-2xl font-bold text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2 transition-all">
+              <Icons.Shield size={18}/> {t.changeMasterPass}
+            </button>
+          </section>
+
+          <section className={`rounded-[2.5rem] p-6 border shadow-xl transition-colors duration-500 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
+            <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2 mb-4 px-1"><Icons.Folder size={14}/> {t.foldersHeader}</h3>
             <div className="space-y-4">
               <div className="flex gap-2">
-                <input value={newF} onChange={e => setNewF(e.target.value)} placeholder={t.settingsFolder} className="flex-1 bg-black/30 border border-white/5 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#4CAF50]/30 outline-none" />
+                <input value={newF} onChange={e => setNewF(e.target.value)} placeholder={t.settingsFolder} className={`flex-1 border rounded-2xl px-4 py-3 text-sm focus:border-[#4CAF50]/30 outline-none transition-all ${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
                 <button onClick={handleAddFolder} className="bg-[#4CAF50] p-3 rounded-2xl text-white active:scale-95"><Icons.Plus size={20}/></button>
               </div>
 
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {settings.folders.map(f => (
-                  <div key={f} className="flex items-center justify-between p-3 bg-black/20 rounded-2xl border border-white/5 group">
-                    <span className="text-[11px] text-white/70 font-bold truncate pr-4">{f}</span>
+                  <div key={f} className={`flex items-center justify-between p-3 border rounded-2xl group transition-all ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
+                    <span className={`text-[11px] font-bold truncate pr-4 ${isDark ? 'text-white/70' : 'text-gray-700'}`}>{f}</span>
                     <button onClick={() => handleDeleteFolder(f)} className="p-2 text-gray-700 hover:text-red-500 transition-colors"><Icons.Trash2 size={16}/></button>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-4 border-t border-white/5 space-y-3">
-                <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest px-1">{t.settingsSubFolder}</p>
+              <div className={`pt-4 border-t space-y-3 ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+                <p className={`text-[10px] font-black uppercase tracking-widest px-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.settingsSubFolder}</p>
                 <div className="space-y-2">
                    <select 
                     value={selectedRoot} 
                     onChange={e => setSelectedRoot(e.target.value)} 
-                    className={`w-full bg-black/30 border border-white/5 rounded-2xl px-4 py-3 text-sm outline-none transition-all ${selectedRoot === "" ? "text-gray-500" : "text-white"}`}
+                    className={`w-full border rounded-2xl px-4 py-3 text-sm outline-none transition-all ${isDark ? 'bg-black/30 border-white/5' : 'bg-gray-50 border-gray-200'} ${selectedRoot === "" ? "text-gray-500" : (isDark ? "text-white" : "text-gray-900")}`}
                    >
-                     <option value="" className="text-gray-500 bg-[#161616]">--Chọn thư mục gốc--</option>
-                     {settings.folders.map(f => <option key={f} value={f} className="text-white bg-[#161616]">{f}</option>)}
+                     <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>--Chọn thư mục gốc--</option>
+                     {settings.folders.map(f => <option key={f} value={f} className={isDark ? 'bg-[#161616]' : 'bg-white'}>{f}</option>)}
                    </select>
                    <div className="flex gap-2">
-                    <input value={newSub} onChange={e => setNewSub(e.target.value)} placeholder={t.settingsSubFolder} className="flex-1 bg-black/30 border border-white/5 rounded-2xl px-4 py-3 text-sm text-white focus:border-[#4CAF50]/30 outline-none" />
+                    <input value={newSub} onChange={e => setNewSub(e.target.value)} placeholder={t.settingsSubFolder} className={`flex-1 border rounded-2xl px-4 py-3 text-sm focus:border-[#4CAF50]/30 outline-none transition-all ${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
                     <button onClick={handleAddSubFolder} className="bg-[#4CAF50] p-3 rounded-2xl text-white active:scale-95"><Icons.Plus size={20}/></button>
                   </div>
                 </div>
@@ -1134,8 +1162,8 @@ const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMa
                 {selectedRoot && (settings.subFolders[selectedRoot] || []).length > 0 && (
                   <div className="space-y-2 max-h-40 overflow-y-auto mt-2">
                     {(settings.subFolders[selectedRoot] || []).map(sub => (
-                      <div key={sub} className="flex items-center justify-between p-2.5 bg-white/5 rounded-xl border border-white/5">
-                        <span className="text-[10px] text-white/60 font-medium">{sub}</span>
+                      <div key={sub} className={`flex items-center justify-between p-2.5 border rounded-xl transition-all ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
+                        <span className={`text-[10px] font-medium ${isDark ? 'text-white/60' : 'text-gray-600'}`}>{sub}</span>
                         <button onClick={() => handleDeleteSubFolder(selectedRoot, sub)} className="p-1.5 text-gray-700 hover:text-red-500 transition-colors"><Icons.Trash2 size={14}/></button>
                       </div>
                     ))}
@@ -1145,38 +1173,74 @@ const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMa
             </div>
           </section>
 
-          <section className="bg-[#161616] rounded-[2.5rem] p-6 border border-white/5 space-y-4">
+          <section className={`rounded-[2.5rem] p-6 border shadow-xl transition-colors duration-500 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
             <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2"><Icons.Settings size={14}/> {t.securitySettings}</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">{t.autoLock}</span>
-                <button onClick={() => setSettings({...settings, autoLockEnabled: !settings.autoLockEnabled})} className={`w-12 h-6 rounded-full relative transition-all ${settings.autoLockEnabled ? 'bg-[#4CAF50]' : 'bg-[#222]'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all ${settings.autoLockEnabled ? 'right-1' : 'left-1'}`}/></button>
+                <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>{t.autoLock}</span>
+                <button onClick={() => setSettings({...settings, autoLockEnabled: !settings.autoLockEnabled})} className={`w-12 h-6 rounded-full relative transition-all ${settings.autoLockEnabled ? 'bg-[#4CAF50]' : 'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all ${settings.autoLockEnabled ? 'right-1' : 'left-1'}`}/></button>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">{t.clearClipboard}</span>
-                <button onClick={() => setSettings({...settings, clearClipboardEnabled: !settings.clearClipboardEnabled})} className={`w-12 h-6 rounded-full relative transition-all ${settings.clearClipboardEnabled ? 'bg-[#4CAF50]' : 'bg-[#222]'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all ${settings.clearClipboardEnabled ? 'right-1' : 'left-1'}`}/></button>
+                <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>{t.clearClipboard}</span>
+                <button onClick={() => setSettings({...settings, clearClipboardEnabled: !settings.clearClipboardEnabled})} className={`w-12 h-6 rounded-full relative transition-all ${settings.clearClipboardEnabled ? 'bg-[#4CAF50]' : 'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-all ${settings.clearClipboardEnabled ? 'right-1' : 'left-1'}`}/></button>
+              </div>
+            </div>
+
+            <div className={`mt-6 pt-4 border-t space-y-4 ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+              <h4 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2"><Icons.Monitor size={14}/> {t.themeLabel}</h4>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setSettings({...settings, theme: 'light'})}
+                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${settings.theme === 'light' ? 'bg-[#4CAF50] text-white shadow-lg' : (isDark ? 'bg-white/5 text-gray-500' : 'bg-gray-100 text-gray-400')}`}
+                >
+                  <Icons.Eye size={14}/> {t.themeLight}
+                </button>
+                <button 
+                  onClick={() => setSettings({...settings, theme: 'dark'})}
+                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${settings.theme === 'dark' ? 'bg-[#4CAF50] text-white shadow-lg' : (isDark ? 'bg-white/5 text-gray-500' : 'bg-gray-100 text-gray-400')}`}
+                >
+                  <Icons.EyeOff size={14}/> {t.themeDark}
+                </button>
+              </div>
+            </div>
+
+            <div className={`mt-6 pt-4 border-t space-y-4 ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+              <h4 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2"><Icons.Globe size={14}/> {t.languageLabel}</h4>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setSettings({...settings, language: 'vi'})}
+                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${settings.language === 'vi' ? 'bg-[#4CAF50] text-white shadow-lg' : (isDark ? 'bg-white/5 text-gray-500' : 'bg-gray-100 text-gray-400')}`}
+                >
+                  {t.langVi}
+                </button>
+                <button 
+                  onClick={() => setSettings({...settings, language: 'en'})}
+                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 ${settings.language === 'en' ? 'bg-[#4CAF50] text-white shadow-lg' : (isDark ? 'bg-white/5 text-gray-500' : 'bg-gray-100 text-gray-400')}`}
+                >
+                  {t.langEn}
+                </button>
               </div>
             </div>
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-[10px] font-black text-gray-700 uppercase tracking-widest px-1">{t.dataManagement}</h3>
+            <h3 className={`text-[10px] font-black uppercase tracking-widest px-1 ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.dataManagement}</h3>
             <div className="grid grid-cols-2 gap-4">
-               <button onClick={handleExport} className="flex flex-col items-center justify-center p-6 bg-[#161616] border border-white/5 rounded-[2.5rem] hover:border-[#4CAF50]/30 transition-all shadow-sm">
+               <button onClick={handleExport} className={`flex flex-col items-center justify-center p-6 border rounded-[2.5rem] hover:border-[#4CAF50]/30 transition-all shadow-sm ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
                 <Icons.Upload className="text-[#4CAF50] mb-2.5" size={24} />
-                <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] text-center">{t.exportDb}</span>
+                <span className={`text-[9px] font-black uppercase tracking-[0.2em] text-center ${isDark ? 'text-white' : 'text-gray-800'}`}>{t.exportDb}</span>
               </button>
-              <label className="flex flex-col items-center justify-center p-6 bg-[#161616] border border-white/5 rounded-[2.5rem] hover:border-[#4CAF50]/30 transition-all cursor-pointer shadow-sm">
+              <label className={`flex flex-col items-center justify-center p-6 border rounded-[2.5rem] hover:border-[#4CAF50]/30 transition-all cursor-pointer shadow-sm ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
                 <Icons.Download className="text-[#4CAF50] mb-2.5" size={24} />
-                <span className="text-[9px] font-black text-white uppercase tracking-[0.2em] text-center">{t.importDb}</span>
+                <span className={`text-[9px] font-black uppercase tracking-[0.2em] text-center ${isDark ? 'text-white' : 'text-gray-800'}`}>{t.importDb}</span>
                 <input type="file" accept=".vpass" onChange={handleImport} className="hidden" />
               </label>
             </div>
           </section>
           
           <div className="space-y-3">
-            <button onClick={handleLock} className="w-full bg-white/5 text-gray-500 font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-3xl border border-white/5 active:scale-95 transition-all">ĐĂNG XUẤT / KHÓA APP</button>
-            <button onClick={resetVault} className="w-full bg-red-500/5 hover:bg-red-500/10 text-red-500 font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-3xl border border-red-500/10 active:scale-95 transition-all">{t.resetVault}</button>
+            <button onClick={handleLock} className={`w-full font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-3xl border active:scale-95 transition-all ${isDark ? 'bg-white/5 text-gray-500 border-white/5' : 'bg-gray-200 text-gray-600 border-gray-300'}`}>LOG OUT / LOCK APP</button>
+            <button onClick={resetVault} className={`w-full bg-red-500/5 hover:bg-red-500/10 text-red-500 font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-3xl border border-red-500/10 active:scale-95 transition-all`}>{t.resetVault}</button>
           </div>
         </div>
       </main>
@@ -1185,7 +1249,7 @@ const SettingsScreen = ({ t, settings, setSettings, handleLock, setView, setIsMa
 };
 
 /* --- Entry Modal --- */
-const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }: any) => {
+const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, addType }: any) => {
   const [localData, setLocalData] = useState<any>(() => {
     if (entry) return { ...entry };
     return { 
@@ -1214,12 +1278,12 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
     const error = validation ? validation(value) : null;
     return (
       <div className="space-y-1">
-        <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{label}</label>
+        <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{label}</label>
         <div className="relative">
           <input 
             disabled={isView} type={type} value={value} 
             onChange={e => setLocalData({...localData, [field]: e.target.value})} 
-            className={`w-full bg-[#1a1a1a] border rounded-2xl py-4 pl-6 pr-14 text-sm text-white focus:border-[#4CAF50]/40 outline-none transition-all placeholder-gray-700 disabled:opacity-70 ${error ? 'border-red-500/50' : 'border-white/5'}`}
+            className={`w-full border rounded-2xl py-4 pl-6 pr-14 text-sm focus:border-[#4CAF50]/40 outline-none transition-all disabled:opacity-70 ${isDark ? 'bg-[#1a1a1a] text-white placeholder-gray-700' : 'bg-gray-100 text-gray-900 placeholder-gray-400'} ${error ? 'border-red-500/50' : (isDark ? 'border-white/5' : 'border-gray-200')}`}
             placeholder={placeholder}
           />
           <button type="button" onClick={() => copy(value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#4CAF50] transition-colors">
@@ -1256,17 +1320,17 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
             {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "LÊ ĐỨC LONG", val => (val && val !== val.toUpperCase()) ? t.uppercaseWarning : null)}
             {copyableField(t.dob, 'dob', localData.dob || "", "text", "dd/mm/yyyy")}
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.gender}</label>
+              <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.gender}</label>
               <select 
                 disabled={isView} 
                 value={localData.gender} 
                 onChange={e => setLocalData({...localData, gender: e.target.value})} 
-                className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.gender ? 'text-gray-500' : 'text-white'}`}
+                className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && !localData.gender ? 'text-gray-500' : ''}`}
               >
-                <option value="" className="text-gray-500">{t.chooseGender}</option>
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
-                <option value="Khác">Khác</option>
+                <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.chooseGender}</option>
+                <option value="Nam" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Nam</option>
+                <option value="Nữ" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Nữ</option>
+                <option value="Khác" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Khác</option>
               </select>
             </div>
             {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Bệnh viện đa khoa...")}
@@ -1284,7 +1348,7 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
             {copyableField('Quốc tịch', 'nationality', localData.nationality || "", "text", "Việt Nam")}
             {copyableField(t.residence, 'residence', localData.residence || "", "text", "Hà Tĩnh")}
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.class}</label>
+              <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.class}</label>
               <select 
                 disabled={isView} 
                 value={localData.class} 
@@ -1292,10 +1356,10 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
                   const isNoTerm = ['A1', 'A2', 'A3'].includes(e.target.value);
                   setLocalData({...localData, class: e.target.value, expiryDate: isNoTerm ? t.indefinite : localData.expiryDate});
                 }} 
-                className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.class ? 'text-gray-500' : 'text-white'}`}
+                className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && !localData.class ? 'text-gray-500' : ''}`}
               >
-                <option value="" className="text-gray-500">{t.chooseClass}</option>
-                {['A1', 'A2', 'A3', 'B1', 'B2', 'C', 'D', 'E', 'Khác'].map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.chooseClass}</option>
+                {['A1', 'A2', 'A3', 'B1', 'B2', 'C', 'D', 'E', 'Khác'].map(c => <option key={c} value={c} className={isDark ? 'bg-[#161616]' : 'bg-white'}>{c}</option>)}
               </select>
             </div>
             {copyableField('Thời hạn', 'expiryDate', localData.expiryDate || "", "text", "dd/mm/yyyy")}
@@ -1307,24 +1371,24 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
         return (
           <>
              <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">Loại (Type)</label><input disabled={isView} value={localData.passportType || 'P'} onChange={e => setLocalData({...localData, passportType: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" /></div>
-              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">Mã số (Code)</label><input disabled={isView} value={localData.passportCode || 'VNM'} onChange={e => setLocalData({...localData, passportCode: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>Loại (Type)</label><input disabled={isView} value={localData.passportType || 'P'} onChange={e => setLocalData({...localData, passportType: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>Mã số (Code)</label><input disabled={isView} value={localData.passportCode || 'VNM'} onChange={e => setLocalData({...localData, passportCode: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
             </div>
             {copyableField('Số hộ chiếu', 'idNumber', localData.idNumber || "", "text", "P1234567")}
             {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "NGUYEN VAN A")}
             {copyableField('Quốc tịch', 'nationality', localData.nationality || "", "text", "VIỆT NAM / VIETNAMESE")}
             {copyableField(t.dob, 'dob', localData.dob || "", "text", "dd/mm/yyyy")}
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.gender}</label>
+              <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.gender}</label>
               <select 
                 disabled={isView} 
                 value={localData.gender} 
                 onChange={e => setLocalData({...localData, gender: e.target.value})} 
-                className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.gender ? 'text-gray-500' : 'text-white'}`}
+                className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && !localData.gender ? 'text-gray-500' : ''}`}
               >
-                <option value="" className="text-gray-500">{t.chooseGender}</option>
-                <option value="M">Nam (M)</option>
-                <option value="F">Nữ (F)</option>
+                <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.chooseGender}</option>
+                <option value="M" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Nam (M)</option>
+                <option value="F" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Nữ (F)</option>
               </select>
             </div>
             {copyableField('Số định danh cá nhân', 'pin', localData.pin || "", "text", "12 số Căn cước")}
@@ -1340,10 +1404,10 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
   };
 
   return (
-    <div className="fixed inset-0 bg-[#0d0d0d] z-[100] flex flex-col animate-in slide-in-from-bottom-5">
-      <header className="h-16 border-b border-white/5 flex items-center px-4 justify-between bg-[#111]">
-        <button onClick={onClose} className="p-2 text-gray-500 hover:text-white"><Icons.ChevronLeft size={24} /></button>
-        <h2 className="text-[10px] font-black text-white uppercase tracking-widest">
+    <div className={`fixed inset-0 z-[100] flex flex-col animate-in slide-in-from-bottom-5 transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d]' : 'bg-[#f5f5f5]'}`}>
+      <header className={`h-16 border-b flex items-center px-4 justify-between transition-colors duration-500 ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5'}`}>
+        <button onClick={onClose} className="p-2 text-gray-500 hover:text-[#4CAF50]"><Icons.ChevronLeft size={24} /></button>
+        <h2 className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {localData.type === 'document' ? t.addDocument : typeLabels[localData.type]}
         </h2>
         {!isView ? <button onClick={() => onSave(localData)} className="bg-[#4CAF50] text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-[#4CAF50]/20">{t.save}</button> : <div className="w-10"/>}
@@ -1354,30 +1418,30 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
           {localData.type === 'login' && (
             <>
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.title}*</label>
-                <input disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white focus:border-[#4CAF50]/40 outline-none" placeholder={t.loginTitleHint} />
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.title}*</label>
+                <input disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.loginTitleHint} />
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.groupLabel}</label>
-                <select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none">
-                  <option value="---" className="bg-[#161616]">---</option>
-                  {settings.folders.map(f => <option key={f} value={f} className="bg-[#161616]">{f}</option>)}
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.groupLabel}</label>
+                <select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}>
+                  <option value="---" className={isDark ? 'bg-[#161616]' : 'bg-white'}>---</option>
+                  {settings.folders.map(f => <option key={f} value={f} className={isDark ? 'bg-[#161616]' : 'bg-white'}>{f}</option>)}
                 </select>
               </div>
               {currentSubFolders.length > 0 && (
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.subGroupLabel}</label>
-                  <select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.subGroup ? 'text-gray-500 font-medium' : 'text-white font-bold'}`}>
-                    <option value="" className="bg-[#161616]">-- Chọn nhóm con --</option>
-                    {currentSubFolders.map((s: string) => <option key={s} value={s} className="bg-[#161616]">{s}</option>)}
+                  <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.subGroupLabel}</label>
+                  <select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && !localData.subGroup ? 'text-gray-500 font-medium' : ''}`}>
+                    <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>-- Chọn nhóm con --</option>
+                    {currentSubFolders.map((s: string) => <option key={s} value={s} className={isDark ? 'bg-[#161616]' : 'bg-white'}>{s}</option>)}
                   </select>
                 </div>
               )}
               {copyableField(t.username, 'username', localData.username || "")}
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.password}</label>
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.password}</label>
                 <div className="relative">
-                  <input disabled={isView} type={showPass ? "text" : "password"} value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 pl-6 pr-24 font-mono text-sm text-white outline-none transition-all placeholder-gray-700"/>
+                  <input disabled={isView} type={showPass ? "text" : "password"} value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white placeholder-gray-700' : 'bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400'}`}/>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-600">
                     <button type="button" onClick={() => setShowPass(!showPass)}>{showPass ? <Icons.EyeOff size={18}/> : <Icons.Eye size={18}/>}</button>
                     <button type="button" onClick={() => copy(localData.password)}><Icons.Copy size={18}/></button>
@@ -1385,12 +1449,12 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.expiryInterval}</label>
-                <select disabled={isView} value={localData.expiryInterval} onChange={e => setLocalData({...localData, expiryInterval: e.target.value})} className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && localData.expiryInterval === '6m' ? 'text-gray-500 font-medium' : 'text-white font-bold'}`}>
-                  <option value="1d" className="bg-[#161616]">{t.day}</option>
-                  <option value="1m" className="bg-[#161616]">{t.month}</option>
-                  <option value="6m" className="bg-[#161616]">{t.sixMonths}</option>
-                  <option value="1y" className="bg-[#161616]">{t.year}</option>
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.expiryInterval}</label>
+                <select disabled={isView} value={localData.expiryInterval} onChange={e => setLocalData({...localData, expiryInterval: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && localData.expiryInterval === '6m' ? 'text-gray-500 font-medium' : ''}`}>
+                  <option value="1d" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.day}</option>
+                  <option value="1m" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.month}</option>
+                  <option value="6m" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.sixMonths}</option>
+                  <option value="1y" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.year}</option>
                 </select>
               </div>
               <div className="pt-2">
@@ -1401,15 +1465,15 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
                     {copyableField(t.authCode, 'authCode', localData.authCode || "")}
                     {copyableField(t.recoveryInfo, 'recoveryInfo', localData.recoveryInfo || "")}
                     <div className="space-y-1">
-                      <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.url}</label>
+                      <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.url}</label>
                       <div className="relative">
-                        <input disabled={isView} value={localData.url} onChange={e => setLocalData({...localData, url: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 pl-6 pr-14 text-sm text-white outline-none focus:border-[#4CAF50]/30" placeholder={t.urlHint} />
+                        <input disabled={isView} value={localData.url} onChange={e => setLocalData({...localData, url: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-14 text-sm outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.urlHint} />
                         {localData.url && (
                           <a href={localData.url} target="_blank" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4CAF50] p-1"><Icons.ExternalLink size={18}/></a>
                         )}
                       </div>
                     </div>
-                    <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={4} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
+                    <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={4} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-sm resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
                   </div>
                 )}
               </div>
@@ -1419,88 +1483,88 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
           {localData.type === 'card' && (
             <>
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.title}</label>
-                <select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.title ? 'text-gray-500 font-medium' : 'text-white font-bold'}`}>
-                  <option value="" className="bg-[#161616]">-- Chọn ngân hàng --</option>
-                  {(settings.subFolders['Ngân hàng'] || []).map((b: string) => <option key={b} value={b} className="bg-[#161616]">{b}</option>)}
-                  <option value="Khác" className="bg-[#161616]">Khác</option>
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.title}</label>
+                <select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && !localData.title ? 'text-gray-500 font-medium' : ''}`}>
+                  <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>-- Chọn ngân hàng --</option>
+                  {(settings.subFolders['Ngân hàng'] || []).map((b: string) => <option key={b} value={b} className={isDark ? 'bg-[#161616]' : 'bg-white'}>{b}</option>)}
+                  <option value="Khác" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Khác</option>
                 </select>
               </div>
               {localData.title === 'Khác' && (
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.title} (Chi tiết)</label>
-                  <input disabled={isView} value={localData.customTitle} onChange={e => setLocalData({...localData, customTitle: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" placeholder="Thẻ Siêu thị Winmart, Thẻ tích điểm ..." />
+                  <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.title} (Chi tiết)</label>
+                  <input disabled={isView} value={localData.customTitle} onChange={e => setLocalData({...localData, customTitle: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder="Thẻ Siêu thị Winmart, Thẻ tích điểm ..." />
                 </div>
               )}
               {copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "text", "0000 0000 0000 0000")}
               {copyableField(t.cardName, 'cardHolder', localData.cardHolder || "", "text", t.cardNameHint)}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.cardType}</label>
+                  <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.cardType}</label>
                   <select 
                     disabled={isView} 
                     value={localData.cardType} 
                     onChange={e => setLocalData({...localData, cardType: e.target.value})} 
-                    className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.cardType ? 'text-gray-500' : 'text-white font-bold'}`}
+                    className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && !localData.cardType ? 'text-gray-500' : ''}`}
                   >
-                    <option value="" className="text-gray-500 bg-[#161616]">{t.chooseCardType}</option>
-                    <option value="Thường" className="bg-[#161616]">Thường</option>
-                    <option value="Visa" className="bg-[#161616]">Visa</option>
-                    <option value="Debit" className="bg-[#161616]">Debit</option>
-                    <option value="Master" className="bg-[#161616]">Master</option>
-                    <option value="Tích điểm" className="bg-[#161616]">Tích điểm</option>
-                    <option value="Gold" className="bg-[#161616]">Gold</option>
-                    <option value="Diamon" className="bg-[#161616]">Diamon</option>
-                    <option value="Khác" className="bg-[#161616]">Khác</option>
+                    <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.chooseCardType}</option>
+                    <option value="Thường" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Thường</option>
+                    <option value="Visa" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Visa</option>
+                    <option value="Debit" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Debit</option>
+                    <option value="Master" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Master</option>
+                    <option value="Tích điểm" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Tích điểm</option>
+                    <option value="Gold" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Gold</option>
+                    <option value="Diamon" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Diamon</option>
+                    <option value="Khác" className={isDark ? 'bg-[#161616]' : 'bg-white'}>Khác</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.expiryMonth}</label>
-                  <input disabled={isView} value={localData.expiryMonth} onChange={e => setLocalData({...localData, expiryMonth: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" placeholder="MM/YY" />
+                  <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.expiryMonth}</label>
+                  <input disabled={isView} value={localData.expiryMonth} onChange={e => setLocalData({...localData, expiryMonth: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder="MM/YY" />
                 </div>
               </div>
-              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-sm resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
             </>
           )}
           
           {localData.type === 'contact' && (
             <>
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.nickname} <span className="text-red-500 font-bold">*</span></label>
-                <input disabled={isView} value={localData.nickname} onChange={e => setLocalData({...localData, nickname: e.target.value, title: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white focus:border-[#4CAF50]/40 outline-none" placeholder={t.nicknameHint} />
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.nickname} <span className="text-red-500 font-bold">*</span></label>
+                <input disabled={isView} value={localData.nickname} onChange={e => setLocalData({...localData, nickname: e.target.value, title: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.nicknameHint} />
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.fullName}</label>
-                <input disabled={isView} value={localData.fullName} onChange={e => setLocalData({...localData, fullName: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm text-white outline-none" placeholder={t.fullNameHint} />
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.fullName}</label>
+                <input disabled={isView} value={localData.fullName} onChange={e => setLocalData({...localData, fullName: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.fullNameHint} />
               </div>
               {copyableField(t.phone, 'phone', localData.phone || "")}
               {copyableField(t.email, 'email', localData.email || "")}
               {copyableField(t.address, 'address', localData.address || "", "text", t.addressHint)}
-              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-sm resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
             </>
           )}
 
           {localData.type === 'document' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.docType}</label>
+                <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.docType}</label>
                 <select 
                   disabled={isView} 
                   value={localData.documentType} 
                   onChange={e => setLocalData({...localData, documentType: e.target.value})} 
-                  className={`w-full bg-[#1a1a1a] border border-white/5 rounded-2xl py-4 px-6 text-sm outline-none transition-all ${!isView && !localData.documentType ? 'text-gray-500' : 'text-white'}`}
+                  className={`w-full border rounded-2xl py-4 px-6 text-sm outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'} ${!isView && !localData.documentType ? 'text-gray-500' : ''}`}
                 >
-                  <option value="" className="text-gray-500 bg-[#161616]">{t.chooseDocType}</option>
-                  <option value="id_card" className="bg-[#161616]">{t.idCard}</option>
-                  <option value="health_insurance" className="bg-[#161616]">{t.healthInsurance}</option>
-                  <option value="driving_license" className="bg-[#161616]">{t.drivingLicense}</option>
-                  <option value="passport" className="bg-[#161616]">{t.passport}</option>
-                  <option value="residence_card" className="bg-[#161616]">{t.residenceCard}</option>
+                  <option value="" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.chooseDocType}</option>
+                  <option value="id_card" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.idCard}</option>
+                  <option value="health_insurance" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.healthInsurance}</option>
+                  <option value="driving_license" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.drivingLicense}</option>
+                  <option value="passport" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.passport}</option>
+                  <option value="residence_card" className={isDark ? 'bg-[#161616]' : 'bg-white'}>{t.residenceCard}</option>
                 </select>
               </div>
-              <div className="h-px bg-white/5 w-full my-4" />
+              <div className={`h-px w-full my-4 ${isDark ? 'bg-white/5' : 'bg-gray-200'}`} />
               {renderDocumentFields()}
-              <div className="space-y-1"><label className="text-[9px] font-black text-gray-700 uppercase tracking-widest ml-1 mb-1.5 block">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className="w-full bg-[#1a1a1a] border border-white/5 rounded-2xl p-6 text-sm text-white resize-none outline-none focus:border-[#4CAF50]/30" /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-sm resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
             </div>
           )}
         </div>
@@ -1510,26 +1574,25 @@ const EntryModal = ({ t, settings, mode, entry, onClose, onSave, copy, addType }
 };
 
 /* --- Generator Screen --- */
-const GeneratorScreen = ({ t, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory }: any) => {
+const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory }: any) => {
   const [showQR, setShowQR] = useState(false);
   return (
-    <div className="flex-1 flex flex-col bg-[#0d0d0d] h-full overflow-hidden">
-      <header className="sticky top-0 z-40 h-16 border-b border-white/5 flex items-center px-6 justify-between bg-[#111]/90 backdrop-blur-xl">
-        <h2 className="text-lg font-bold text-white tracking-tight">{t.generatorTab}</h2>
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-6 justify-between backdrop-blur-xl transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
+        <h2 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.generatorTab}</h2>
         <div className="flex items-center gap-1">
-          <button onClick={() => setShowQR(!showQR)} className={`p-2 transition-all ${showQR ? 'text-[#4CAF50]' : 'text-gray-500 hover:text-white'}`}><Icons.Camera size={22} /></button>
-          <button onClick={() => setShowGenHistory(!showGenHistory)} className={`p-2 transition-all ${showGenHistory ? 'text-[#4CAF50]' : 'text-gray-500 hover:text-white'}`}><Icons.History size={22} /></button>
+          <button onClick={() => setShowGenHistory(!showGenHistory)} className={`p-2 transition-all ${showGenHistory ? 'text-[#4CAF50]' : 'text-gray-500 hover:opacity-100'}`}><Icons.History size={22} /></button>
         </div>
       </header>
       <main className="flex-1 flex overflow-hidden">
         {showGenHistory && (
-          <aside className="w-64 border-r border-white/5 bg-[#111]/50 overflow-y-auto p-4 hidden md:block animate-in slide-in-from-left-5">
-            <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest mb-4 px-2">{t.genHistory}</h3>
+          <aside className={`w-64 border-r overflow-y-auto p-4 hidden md:block animate-in slide-in-from-left-5 transition-colors duration-500 ${isDark ? 'border-white/5 bg-[#111]/50' : 'border-black/5 bg-white/50'}`}>
+            <h3 className={`text-[10px] font-black uppercase tracking-widest mb-4 px-2 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.genHistory}</h3>
             <div className="space-y-1.5">
               {genHistory.map((p: string, idx: number) => (
-                <button key={idx} onClick={() => copy(p)} className="w-full flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-[#4CAF50]/10 transition-all text-left group">
+                <button key={idx} onClick={() => copy(p)} className={`w-full flex items-center justify-between p-3 rounded-xl hover:bg-[#4CAF50]/10 transition-all text-left group ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <span className="font-mono text-[10px] text-[#4CAF50] truncate pr-2">{p}</span>
-                  <Icons.Copy size={12} className="text-gray-600 group-hover:text-white"/>
+                  <Icons.Copy size={12} className="text-gray-600 group-hover:text-[#4CAF50]"/>
                 </button>
               ))}
             </div>
@@ -1538,22 +1601,30 @@ const GeneratorScreen = ({ t, genPass, genConfig, setGenConfig, handleGenerator,
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
           <div className="space-y-4 text-center">
-            <input readOnly value={genPass} className="w-full bg-[#1a1a1a] border border-white/5 rounded-3xl p-6 text-center text-xl font-mono text-[#4CAF50] tracking-wider outline-none" />
+            <input readOnly value={genPass} className={`w-full border rounded-3xl p-6 text-center text-xl font-mono text-[#4CAF50] tracking-wider outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5' : 'bg-white border-gray-200'}`} />
             {showQR && genPass && (
               <div className="bg-white p-6 rounded-3xl inline-block mx-auto mb-4 animate-in zoom-in-95"><QRCodeSVG value={genPass} size={180} /></div>
             )}
-            <div className="flex gap-3">
-              <button onClick={() => copy(genPass)} className="flex-1 bg-white/5 text-white py-4 rounded-3xl font-bold flex items-center justify-center gap-2 border border-white/5 active:scale-95 transition-all"><Icons.Copy size={18} /> {t.copyPassword}</button>
-              <button onClick={handleGenerator} className="bg-[#4CAF50] text-white p-4 rounded-3xl active:scale-95 transition-all shadow-lg shadow-[#4CAF50]/20"><Icons.RefreshCw size={24} /></button>
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <button onClick={() => copy(genPass)} className={`flex-1 font-bold flex items-center justify-center gap-2 border active:scale-95 transition-all py-4 rounded-3xl ${isDark ? 'bg-white/5 text-white border-white/5' : 'bg-white text-gray-700 border-gray-200 shadow-sm'}`}><Icons.Copy size={18} /> {t.copyPassword}</button>
+                <button onClick={handleGenerator} className="bg-[#4CAF50] text-white p-4 rounded-3xl active:scale-95 transition-all shadow-lg shadow-[#4CAF50]/20"><Icons.RefreshCw size={24} /></button>
+              </div>
+              <button 
+                onClick={() => setShowQR(!showQR)} 
+                className={`w-full font-bold flex items-center justify-center gap-2 border active:scale-95 transition-all py-4 rounded-3xl ${showQR ? 'bg-[#4CAF50] text-white border-[#4CAF50]' : (isDark ? 'bg-white/5 text-white border-white/5' : 'bg-white text-gray-700 border-gray-200 shadow-sm')}`}
+              >
+                <Icons.Camera size={18} /> {t.createQRCode}
+              </button>
             </div>
           </div>
-          <div className="bg-[#161616] rounded-[2.5rem] border border-white/5 p-6 space-y-4 max-w-lg mx-auto shadow-lg">
+          <div className={`rounded-[2.5rem] border p-6 space-y-4 max-w-lg mx-auto shadow-lg transition-colors duration-500 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
             <div className="flex justify-between items-center"><label className="text-xs font-bold text-gray-500">{t.genLength}</label><span className="font-bold text-[#4CAF50]">{genConfig.length}</span></div>
             <input type="range" min="4" max="64" value={genConfig.length} onChange={e => setGenConfig({...genConfig, length: parseInt(e.target.value)})} className="w-full accent-[#4CAF50]" />
             {[{ id: 'useAZ', label: t.genAZ }, { id: 'useaz', label: t.genaz }, { id: 'use09', label: t.gen09 }, { id: 'useSpec', label: t.genSpec }].map(opt => (
               <div key={opt.id} className="flex items-center justify-between">
-                <span className="text-xs text-white">{opt.label}</span>
-                <button onClick={() => setGenConfig({...genConfig, [opt.id]: !(genConfig as any)[opt.id]})} className={`w-12 h-6 rounded-full relative transition-all ${ (genConfig as any)[opt.id] ? 'bg-[#4CAF50]' : 'bg-[#222]'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${(genConfig as any)[opt.id] ? 'right-1' : 'left-1'}`} /></button>
+                <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-800'}`}>{opt.label}</span>
+                <button onClick={() => setGenConfig({...genConfig, [opt.id]: !(genConfig as any)[opt.id]})} className={`w-12 h-6 rounded-full relative transition-all ${ (genConfig as any)[opt.id] ? 'bg-[#4CAF50]' : 'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${(genConfig as any)[opt.id] ? 'right-1' : 'left-1'}`} /></button>
               </div>
             ))}
           </div>
@@ -1562,16 +1633,16 @@ const GeneratorScreen = ({ t, genPass, genConfig, setGenConfig, handleGenerator,
 
       {showGenHistory && (
         <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6" onClick={() => setShowGenHistory(false)}>
-          <div className="w-full max-w-md bg-[#121212] rounded-[2rem] p-6 border border-white/10 shadow-2xl scale-in-center" onClick={e => e.stopPropagation()}>
+          <div className={`w-full max-w-md rounded-[2rem] p-6 border shadow-2xl scale-in-center transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`} onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6 px-1">
-              <h3 className="font-bold text-white uppercase text-[11px] tracking-widest">{t.genHistory}</h3>
-              <button onClick={() => setShowGenHistory(false)}><Icons.X size={20} className="text-gray-500 hover:text-white"/></button>
+              <h3 className={`font-bold uppercase text-[11px] tracking-widest ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.genHistory}</h3>
+              <button onClick={() => setShowGenHistory(false)}><Icons.X size={20} className="text-gray-500 hover:text-[#4CAF50]"/></button>
             </div>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {genHistory.map((p: string, idx: number) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl group hover:bg-[#4CAF50]/5 transition-all">
+                <div key={idx} className={`flex items-center justify-between p-4 rounded-2xl group hover:bg-[#4CAF50]/5 transition-all ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <span className="font-mono text-xs text-[#4CAF50] truncate pr-4">{p}</span>
-                  <button onClick={() => copy(p)} className="text-gray-500 group-hover:text-white transition-all"><Icons.Copy size={16} /></button>
+                  <button onClick={() => copy(p)} className="text-gray-500 hover:text-[#4CAF50] transition-all"><Icons.Copy size={16} /></button>
                 </div>
               ))}
             </div>

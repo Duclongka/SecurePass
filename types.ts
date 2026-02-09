@@ -60,6 +60,7 @@ export interface SettingsState {
   clearClipboardEnabled: boolean;
   biometricEnabled: boolean;
   language: Language;
+  theme: 'light' | 'dark';
   groups: string[];
   folders: string[];
   subFolders: Record<string, string[]>; // Mapping of root folder to sub-folders
