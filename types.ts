@@ -23,11 +23,14 @@ export interface PasswordEntry {
   cardNumber?: string;
   cardHolder?: string;
   cardType?: string;
+  atmPin?: string; // New field for ATM withdrawal password
+  qrImage?: string; // Base64 image for account QR
   nickname?: string;
   fullName?: string;
   phone?: string;
   email?: string;
   address?: string;
+  postCode?: string; // New field for contact postcode
   content?: string;
   strength: number;
   createdAt: number;
@@ -49,6 +52,10 @@ export interface PasswordEntry {
   passportType?: string;
   passportCode?: string;
   placeOfBirth?: string;
+  
+  // Document Images
+  frontImage?: string;
+  backImage?: string;
 }
 
 export type AppView = 'login' | 'vault' | 'generator' | 'settings';
