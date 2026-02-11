@@ -746,7 +746,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
         <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1 text-center">{t.unlockSubtitle}</p>
       </div>
       <form onSubmit={handleLogin} className="space-y-4">
-        <input autoFocus type="password" placeholder={t.masterPassword} value={masterPassword} onChange={(e) => setMasterPassword(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 text-sm focus:border-[#4CAF50]/40 transition-all outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} />
+        <input autoFocus type="password" placeholder={t.masterPassword} value={masterPassword} onChange={(e) => setMasterPassword(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] focus:border-[#4CAF50]/40 transition-all outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} />
         <button type="submit" className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
           <Icons.Unlock size={18} /> {t.unlockVault}
         </button>
@@ -803,7 +803,7 @@ const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCa
       <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-4 justify-between backdrop-blur-xl transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
         <div className="flex-1 relative">
           <Icons.Search className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-700' : 'text-gray-400'}`} size={16} />
-          <input type="text" placeholder={t.searchPlaceholder} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full border rounded-full py-2.5 pl-12 pr-4 text-[16px] focus:outline-none focus:border-[#4CAF50]/40 transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} />
+          <input type="text" placeholder={t.searchPlaceholder} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full border rounded-full py-2.5 pl-12 pr-4 text-[16px] placeholder:text-[13px] focus:outline-none focus:border-[#4CAF50]/40 transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} />
         </div>
         <button onClick={() => setView('settings')} className={`ml-3 p-2 transition-colors ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}><Icons.Settings size={22} /></button>
       </header>
@@ -973,7 +973,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, masterPass
         <div className="space-y-4">
           <div className="space-y-1">
             <div className="relative">
-              <input type={showMP ? "text" : "password"} placeholder={t.newMasterPass} value={newMP} onChange={e => { setNewMP(e.target.value); setIsGenerated(false); }} className={`w-full border rounded-2xl py-4 pl-12 pr-24 text-[16px] outline-none transition-all ${newMP && !passwordRegex.test(newMP) ? 'border-red-500/50' : (isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/40' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/40')}`} />
+              <input type={showMP ? "text" : "password"} placeholder={t.newMasterPass} value={newMP} onChange={e => { setNewMP(e.target.value); setIsGenerated(false); }} className={`w-full border rounded-2xl py-4 pl-12 pr-24 text-[16px] placeholder:text-[13px] outline-none transition-all ${newMP && !passwordRegex.test(newMP) ? 'border-red-500/50' : (isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/40' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/40')}`} />
               <Icons.Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-700" size={16}/>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 <button onClick={() => setShowMP(!showMP)} className="p-2 text-gray-600 hover:text-[#4CAF50]">{showMP ? <Icons.EyeOff size={16}/> : <Icons.Eye size={16}/>}</button>
@@ -992,7 +992,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, masterPass
           {!isGenerated && (
             <div className="space-y-1">
               <div className="relative">
-                <input type={showConfirmMP ? "text" : "password"} placeholder={t.confirmMasterPass} value={confirmMP} onChange={e => setConfirmMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 text-[16px] outline-none transition-all ${confirmMP && newMP !== confirmMP ? 'border-red-500/50' : (isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/40' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/40')}`} />
+                <input type={showConfirmMP ? "text" : "password"} placeholder={t.confirmMasterPass} value={confirmMP} onChange={e => setConfirmMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] outline-none transition-all ${confirmMP && newMP !== confirmMP ? 'border-red-500/50' : (isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/40' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/40')}`} />
                 <button onClick={() => setShowConfirmMP(!showConfirmMP)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#4CAF50]">{showConfirmMP ? <Icons.EyeOff size={16}/> : <Icons.Eye size={16}/>}</button>
               </div>
               {confirmMP && newMP !== confirmMP && <p className="text-[10px] text-red-500 font-bold px-1">{t.passwordMismatch}</p>}
@@ -1106,7 +1106,7 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
             <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2 mb-4 px-1"><Icons.Folder size={14}/> {t.foldersHeader}</h3>
             <div className="space-y-4">
               <div className="flex gap-2">
-                <input value={newF} onChange={e => setNewF(e.target.value)} placeholder={t.settingsFolder} className={`flex-1 border rounded-2xl px-4 py-3 text-[16px] focus:border-[#4CAF50]/30 outline-none transition-all ${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                <input value={newF} onChange={e => setNewF(e.target.value)} placeholder={t.settingsFolder} className={`flex-1 border rounded-2xl px-4 py-3 text-[16px] placeholder:text-[13px] focus:border-[#4CAF50]/30 outline-none transition-all ${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
                 <button onClick={handleAddFolder} className="bg-[#4CAF50] p-4 rounded-2xl text-white active:scale-95"><Icons.Plus size={20}/></button>
               </div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -1125,7 +1125,7 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
                      {settings.folders.map(f => <option key={f} value={f} className={isDark ? 'bg-[#161616]' : 'bg-white'}>{f}</option>)}
                    </select>
                    <div className="flex gap-2">
-                    <input value={newSub} onChange={e => setNewSub(e.target.value)} placeholder={t.settingsSubFolder} className={`flex-1 border rounded-2xl px-4 py-3 text-[16px] focus:border-[#4CAF50]/30 outline-none transition-all ${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                    <input value={newSub} onChange={e => setNewSub(e.target.value)} placeholder={t.settingsSubFolder} className={`flex-1 border rounded-2xl px-4 py-3 text-[16px] placeholder:text-[13px] focus:border-[#4CAF50]/30 outline-none transition-all ${isDark ? 'bg-black/30 border-white/5 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
                     <button onClick={handleAddSubFolder} className="bg-[#4CAF50] p-4 rounded-2xl text-white active:scale-95"><Icons.Plus size={20}/></button>
                   </div>
                 </div>
@@ -1222,7 +1222,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           <input 
             disabled={isView} type={type} value={value} 
             onChange={e => setLocalData({...localData, [field]: e.target.value})} 
-            className={`w-full border rounded-2xl py-4 pl-6 pr-14 text-[16px] focus:border-[#4CAF50]/40 outline-none transition-all disabled:opacity-70 ${center ? 'text-center' : ''} ${isDark ? 'bg-[#1a1a1a] text-white placeholder-gray-700' : 'bg-gray-100 text-gray-900 placeholder-gray-400'} ${error ? 'border-red-500/50' : (isDark ? 'border-white/5' : 'border-gray-200')}`}
+            className={`w-full border rounded-2xl py-4 pl-6 pr-14 text-[16px] placeholder:text-[13px] focus:border-[#4CAF50]/40 outline-none transition-all disabled:opacity-70 ${center ? 'text-center' : ''} ${isDark ? 'bg-[#1a1a1a] text-white placeholder-gray-700' : 'bg-gray-100 text-gray-900 placeholder-gray-400'} ${error ? 'border-red-500/50' : (isDark ? 'border-white/5' : 'border-gray-200')}`}
             placeholder={placeholder}
           />
           <button type="button" onClick={() => copy(value)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#4CAF50] transition-colors">
@@ -1350,7 +1350,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.title}*</label>
-                <input disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.loginTitleHint} />
+                <input disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.loginTitleHint} />
               </div>
               <div className="space-y-1">
                 <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.groupLabel}</label>
@@ -1372,7 +1372,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
               <div className="space-y-1">
                 <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.password}</label>
                 <div className="relative">
-                  <input disabled={isView} type={showPass ? "text" : "password"} value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white placeholder-gray-700' : 'bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400'}`}/>
+                  <input disabled={isView} type={showPass ? "text" : "password"} value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] placeholder:text-[13px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white placeholder-gray-700' : 'bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400'}`}/>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-600">
                     <button type="button" onClick={() => setShowPass(!showPass)}>{showPass ? <Icons.EyeOff size={18}/> : <Icons.Eye size={18}/>}</button>
                     <button type="button" onClick={() => copy(localData.password)}><Icons.Copy size={18}/></button>
@@ -1399,11 +1399,11 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     <div className="space-y-1">
                       <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.url}</label>
                       <div className="relative">
-                        <input disabled={isView} value={localData.url} onChange={e => setLocalData({...localData, url: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-14 text-[16px] outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.urlHint} />
+                        <input disabled={isView} value={localData.url} onChange={e => setLocalData({...localData, url: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-14 text-[16px] placeholder:text-[13px] outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.urlHint} />
                         {localData.url && <a href={localData.url} target="_blank" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4CAF50] p-1"><Icons.ExternalLink size={18}/></a>}
                       </div>
                     </div>
-                    <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={4} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
+                    <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={4} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] placeholder:text-[13px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
                   </div>
                 )}
               </div>
@@ -1436,13 +1436,13 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                 </div>
                 <div className="space-y-1">
                   <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.expiryMonth}</label>
-                  <input disabled={isView} value={localData.expiryMonth} onChange={e => setLocalData({...localData, expiryMonth: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] outline-none text-center ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder="MM/YY" />
+                  <input disabled={isView} value={localData.expiryMonth} onChange={e => setLocalData({...localData, expiryMonth: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] outline-none text-center ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder="MM/YY" />
                 </div>
               </div>
               <div className="space-y-1">
                 <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.atmPin}</label>
                 <div className="relative">
-                  <input disabled={isView} type={showAtmPin ? "text" : "password"} value={localData.atmPin} onChange={e => setLocalData({...localData, atmPin: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}/>
+                  <input disabled={isView} type={showAtmPin ? "text" : "password"} value={localData.atmPin} onChange={e => setLocalData({...localData, atmPin: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] placeholder:text-[13px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}/>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-600">
                     <button type="button" onClick={() => setShowAtmPin(!showAtmPin)}>{showAtmPin ? <Icons.EyeOff size={18}/> : <Icons.Eye size={18}/>}</button>
                     <button type="button" onClick={() => copy(localData.atmPin)}><Icons.Copy size={18}/></button>
@@ -1452,7 +1452,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
               <div className="space-y-1">
                 <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.cvv}</label>
                 <div className="relative">
-                  <input disabled={isView} type={showCvv ? "text" : "password"} value={localData.cvv} onChange={e => setLocalData({...localData, cvv: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}/>
+                  <input disabled={isView} type={showCvv ? "text" : "password"} value={localData.cvv} onChange={e => setLocalData({...localData, cvv: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] placeholder:text-[13px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}/>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-600">
                     <button type="button" onClick={() => setShowCvv(!showCvv)}>{showCvv ? <Icons.EyeOff size={18}/> : <Icons.Eye size={18}/>}</button>
                     <button type="button" onClick={() => copy(localData.cvv)}><Icons.Copy size={18}/></button>
@@ -1476,7 +1476,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'qrImage')} className="hidden" disabled={isView} />
                 </label>
               </div>
-              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] placeholder:text-[13px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
             </div>
           )}
 
@@ -1484,16 +1484,16 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             <div className="space-y-4">
               <div className="space-y-1">
                 <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.nickname}*</label>
-                <input disabled={isView} value={localData.nickname} onChange={e => setLocalData({...localData, nickname: e.target.value, title: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.nicknameHint} />
+                <input disabled={isView} value={localData.nickname} onChange={e => setLocalData({...localData, nickname: e.target.value, title: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.nicknameHint} />
               </div>
               <div className="space-y-1">
                 <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.fullName}</label>
-                <input disabled={isView} value={localData.fullName} onChange={e => setLocalData({...localData, fullName: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.fullNameHint} />
+                <input disabled={isView} value={localData.fullName} onChange={e => setLocalData({...localData, fullName: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.fullNameHint} />
               </div>
               {copyableField(t.phone, 'phone', localData.phone || "")}
               {copyableField(t.email, 'email', localData.email || "")}
               {copyableField(t.address, 'address', localData.address || "", "text", t.addressHint)}
-              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] placeholder:text-[13px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
               <button type="button" onClick={() => setShowContactQR(!showContactQR)} className="w-full bg-[#4CAF50] text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Icons.Share2 size={16} /> {t.createQRCode}</button>
               {showContactQR && (
                 <div className="flex flex-col items-center p-6 bg-white rounded-3xl animate-in zoom-in-95">
@@ -1518,7 +1518,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
               </div>
               <div className={`h-px w-full my-4 ${isDark ? 'bg-white/5' : 'bg-gray-200'}`} />
               {renderDocumentFields()}
-              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
+              <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] placeholder:text-[13px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
             </div>
           )}
         </div>
@@ -1612,7 +1612,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.wifiSsid}</label>
-                  <input value={wifiSsid} onChange={e => setWifiSsid(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 text-[16px] focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder="My Network" />
+                  <input value={wifiSsid} onChange={e => setWifiSsid(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] focus:border-[#4CAF50]/40 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder="My Network" />
                 </div>
                 <div className="space-y-1">
                   <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.wifiSecurity}</label>
@@ -1628,7 +1628,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
                   <div className="space-y-1">
                     <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.wifiPassword}</label>
                     <div className="relative">
-                      <input type={showWifiPass ? "text" : "password"} value={wifiPassword} onChange={e => setWifiPassword(e.target.value)} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}/>
+                      <input type={showWifiPass ? "text" : "password"} value={wifiPassword} onChange={e => setWifiPassword(e.target.value)} className={`w-full border rounded-2xl py-4 pl-6 pr-24 font-mono text-[16px] placeholder:text-[13px] outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`}/>
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-gray-600">
                         <button type="button" onClick={() => setShowWifiPass(!showWifiPass)}>{showWifiPass ? <Icons.EyeOff size={18}/> : <Icons.Eye size={18}/>}</button>
                         <button type="button" onClick={() => copy(wifiPassword)}><Icons.Copy size={18}/></button>
@@ -1647,7 +1647,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
       </main>
       {showGenHistory && genMode === 'password' && (
         <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6" onClick={() => setShowGenHistory(false)}>
-          <div className={`w-full max-w-md rounded-[2rem] p-6 border shadow-2xl scale-in-center transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`} onClick={e => e.stopPropagation()}>
+          <div className={`w-full max-sm rounded-[2rem] p-6 border shadow-2xl scale-in-center transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`} onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6 px-1"><h3 className={`font-bold uppercase text-[11px] tracking-widest ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.genHistory}</h3><button onClick={() => setShowGenHistory(false)}><Icons.X size={20} className="text-gray-500 hover:text-[#4CAF50]"/></button></div>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {genHistory.map((p: string, idx: number) => (
