@@ -166,7 +166,8 @@ const translations = {
     wifiSsid: 'WiFi Name (SSID)',
     wifiSecurity: 'Security Type',
     wifiPassword: 'WiFi Password',
-    downloadQr: 'Download PNG',
+    downloadQr: 'Download',
+    saveToVault: 'Save to Vault',
     shareQr: 'Share',
     wifiHint: 'Scan to join WiFi',
     chooseSubGroup: '-- Choose Sub-group --',
@@ -338,7 +339,8 @@ const translations = {
     wifiSsid: 'Tên wifi (SSID)',
     wifiSecurity: 'Loại bảo mật',
     wifiPassword: 'Mật khẩu WiFi',
-    downloadQr: 'Tải xuống PNG',
+    downloadQr: 'Tải xuống',
+    saveToVault: 'Lưu vào Kho',
     shareQr: 'Chia sẻ',
     wifiHint: 'Quét để kết nối WiFi',
     chooseSubGroup: '-- Chọn nhóm con --',
@@ -731,7 +733,7 @@ const App: React.FC = () => {
             />
           )}
           {view === 'generator' && (
-            <GeneratorScreen t={t} isDark={isDark} genPass={genPass} genConfig={genConfig} setGenConfig={setGenConfig} handleGenerator={handleGenerator} copy={copy} genHistory={genHistory} showGenHistory={showGenHistory} setShowGenHistory={setShowGenHistory} setToast={setToast} />
+            <GeneratorScreen t={t} isDark={isDark} genPass={genPass} genConfig={genConfig} setGenConfig={setGenConfig} handleGenerator={handleGenerator} copy={copy} genHistory={genHistory} showGenHistory={showGenHistory} setShowGenHistory={setShowGenHistory} setToast={setToast} onAddEntry={onAddEntry} />
           )}
           {view === 'settings' && (
             <SettingsScreen 
@@ -1557,7 +1559,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
         </div>
 
-        {localData.qrImage && localData.type === 'card' && (
+        {localData.qrImage && (
           <div className={`p-4 rounded-3xl border shadow-lg ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
             <span className={`text-[9px] font-black uppercase tracking-widest block mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.qrImage}</span>
             <img src={localData.qrImage} alt="QR" className="w-full rounded-2xl object-contain h-48 bg-white" />
@@ -1803,7 +1805,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
 };
 
 /* --- Generator Screen --- */
-const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast }: any) => {
+const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast, onAddEntry }: any) => {
   const [showQR, setShowQR] = useState(false);
   const [genMode, setGenMode] = useState<'password' | 'wifi' | 'share'>('password');
   const [wifiSsid, setWifiSsid] = useState('');
@@ -1826,6 +1828,23 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
     link.download = `qr-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
+    setToast(t.success);
+  };
+
+  const handleSaveToVault = () => {
+    const canvas = document.querySelector('.qr-canvas-target canvas') as HTMLCanvasElement;
+    if (!canvas) return;
+    const qrBase64 = canvas.toDataURL('image/png');
+    
+    onAddEntry({
+      type: 'login',
+      title: `QR Wifi: ${wifiSsid || 'Unknown'}`,
+      group: 'Mạng Internet',
+      qrImage: qrBase64,
+      notes: t.wifiHint,
+      password: wifiPassword,
+      username: wifiSsid
+    });
     setToast(t.success);
   };
 
@@ -1925,17 +1944,21 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-3 pt-4">
-                <button onClick={handleDownload} className="bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Icons.Download size={18} /> {t.downloadQr}</button>
-                <button onClick={handleShare} className={`py-4 rounded-3xl font-bold text-xs uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}><Icons.Share2 size={18} /> {t.shareQr}</button>
+              <div className="space-y-3 pt-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={handleDownload} className="bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Icons.Download size={18} /> {t.downloadQr}</button>
+                  <button onClick={handleSaveToVault} className={`py-4 rounded-3xl font-bold text-xs uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-[#4CAF50]' : 'bg-white border-gray-200 text-[#4CAF50] shadow-sm'}`}><Icons.Save size={18} /> {t.saveToVault}</button>
+                </div>
+                <button onClick={handleShare} className={`w-full py-4 rounded-3xl font-bold text-xs uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}><Icons.Share2 size={18} /> {t.shareQr}</button>
               </div>
             </div>
           )}
 
           {genMode === 'share' && (
             <div className="space-y-6 max-w-lg mx-auto">
-              <div className={`p-5 rounded-3xl border transition-colors ${isDark ? 'bg-white/5 border-white/5' : 'bg-blue-50 border-blue-100'}`}>
-                <p className={`text-xs leading-relaxed font-medium ${isDark ? 'text-gray-400' : 'text-blue-700'}`}>
+              <div className="flex items-start gap-2 px-1">
+                <Icons.Lightbulb className="text-[#4CAF50] shrink-0" size={16} />
+                <p className={`text-xs leading-relaxed font-normal italic ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {t.shareQrInstruction}
                 </p>
               </div>

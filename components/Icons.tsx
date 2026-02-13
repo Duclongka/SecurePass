@@ -1,5 +1,5 @@
 
-// Fix: Added ChevronUp to the lucide-react icons imports and exports to resolve the "Property 'ChevronUp' does not exist" error in App.tsx.
+// Fix: Added ChevronUp and Lightbulb to the lucide-react icons imports and exports.
 import { 
   Lock, 
   Unlock, 
@@ -44,7 +44,8 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
-  Star
+  Star,
+  Lightbulb
 } from 'lucide-react';
 
 export {
@@ -91,5 +92,6 @@ export {
   Info,
   ChevronDown,
   ChevronUp,
-  Star
+  Star,
+  Lightbulb
 };
