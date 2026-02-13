@@ -161,7 +161,8 @@ const translations = {
     biometricEnrollSuccess: 'Biometric identification linked successfully!',
     biometricError: 'Biometric error. Please use password.',
     genModePassword: 'Password',
-    genModeWifi: 'WiFi QR',
+    genModeWifi: 'QR WiFi',
+    genModeShare: 'QR Share',
     wifiSsid: 'WiFi Name (SSID)',
     wifiSecurity: 'Security Type',
     wifiPassword: 'WiFi Password',
@@ -170,7 +171,13 @@ const translations = {
     wifiHint: 'Scan to join WiFi',
     chooseSubGroup: '-- Choose Sub-group --',
     chooseExpiry: '-- Choose Duration --',
-    detailedInfo: 'Detailed Information'
+    detailedInfo: 'Detailed Information',
+    detailLogin: 'Login Details',
+    detailCard: 'Card Details',
+    detailDoc: 'Document Details',
+    detailContact: 'Contact Details',
+    shareQrInstruction: 'Write the content you want to quickly share with friends or family and click "Create QR Code" to share quickly and conveniently.',
+    shareQrPlaceholder: 'Enter content to share...'
   },
   vi: {
     appTitle: 'SecurePass',
@@ -327,6 +334,7 @@ const translations = {
     biometricError: 'Lỗi sinh trắc học. Hãy dùng mật khẩu.',
     genModePassword: 'Mật khẩu',
     genModeWifi: 'QR WiFi',
+    genModeShare: 'QR Chia sẻ',
     wifiSsid: 'Tên wifi (SSID)',
     wifiSecurity: 'Loại bảo mật',
     wifiPassword: 'Mật khẩu WiFi',
@@ -335,7 +343,13 @@ const translations = {
     wifiHint: 'Quét để kết nối WiFi',
     chooseSubGroup: '-- Chọn nhóm con --',
     chooseExpiry: '-- Chọn thời hạn --',
-    detailedInfo: 'Thông tin chi tiết'
+    detailedInfo: 'Thông tin chi tiết',
+    detailLogin: 'Thông tin chi tiết Đăng nhập',
+    detailCard: 'Thông tin chi tiết Thẻ (Card)',
+    detailDoc: 'Thông tin chi tiết Giấy tờ',
+    detailContact: 'Thông tin chi tiết Danh bạ',
+    shareQrInstruction: 'Hãy viết nội dung bạn muốn chia sẻ nhanh với bạn bè, người thân và nhấn nút "Tạo mã QR" để chia sẻ một cách nhanh chóng, tiện lợi.',
+    shareQrPlaceholder: 'Nhập nội dung cần chia sẻ...'
   }
 };
 
@@ -1449,7 +1463,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
     }
   };
 
-  const renderViewRow = (label: string, value: string, isSecret: boolean = false, fieldKey?: string) => {
+  const renderViewRow = (label: string, value: string, isSecret: boolean = false, fieldKey?: string, hideCopy: boolean = false) => {
     if (!value || value === '---') return null;
     const isVisible = fieldKey ? !!visibleFields[fieldKey] : true;
     return (
@@ -1471,7 +1485,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
               )}
             </div>
           </div>
-          <button onClick={() => copy(value)} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={16}/></button>
+          {!hideCopy && <button onClick={() => copy(value)} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={16}/></button>}
         </div>
       </div>
     );
@@ -1483,60 +1497,62 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         <div className={`rounded-3xl border overflow-hidden shadow-lg ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
           {localData.type === 'login' && (
             <>
-              {renderViewRow(t.title, localData.title)}
-              {renderViewRow(t.groupLabel, localData.group)}
-              {renderViewRow(t.subGroupLabel, localData.subGroup)}
+              {renderViewRow(t.title, localData.title, false, undefined, true)}
+              {renderViewRow(t.groupLabel, localData.group, false, undefined, true)}
+              {renderViewRow(t.subGroupLabel, localData.subGroup, false, undefined, true)}
               {renderViewRow(t.username, localData.username)}
               {renderViewRow(t.password, localData.password, true, 'password')}
               {renderViewRow(t.pinCode, localData.pin, true, 'pin')}
               {renderViewRow(t.authCode, localData.authCode)}
               {renderViewRow(t.recoveryInfo, localData.recoveryInfo, true, 'recoveryInfo')}
               {renderViewRow(t.url, localData.url)}
-              {renderViewRow(t.notes, localData.notes)}
+              {renderViewRow(t.expiryInterval, t[localData.expiryInterval as keyof typeof t] || localData.expiryInterval, false, undefined, true)}
+              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
             </>
           )}
 
           {localData.type === 'card' && (
             <>
-              {renderViewRow(t.title, localData.title)}
+              {renderViewRow(t.title, localData.title, false, undefined, true)}
               {renderViewRow(t.cardNumber, localData.cardNumber)}
               {renderViewRow(t.cardName, localData.cardHolder)}
-              {renderViewRow(t.cardType, localData.cardType)}
-              {renderViewRow(t.expiryMonth, localData.expiryMonth)}
+              {renderViewRow(t.cardType, localData.cardType, false, undefined, true)}
+              {renderViewRow(t.expiryMonth, localData.expiryMonth, false, undefined, true)}
               {renderViewRow(t.atmPin, localData.atmPin, true, 'atmPin')}
               {renderViewRow(t.cvv, localData.cvv, true, 'cvv')}
-              {renderViewRow(t.notes, localData.notes)}
+              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
             </>
           )}
 
           {localData.type === 'contact' && (
             <>
-              {renderViewRow(t.nickname, localData.nickname)}
+              {renderViewRow(t.nickname, localData.nickname, false, undefined, true)}
               {renderViewRow(t.fullName, localData.fullName)}
               {renderViewRow(t.phone, localData.phone)}
               {renderViewRow(t.email, localData.email)}
+              {renderViewRow(t.postCode, localData.postCode)}
               {renderViewRow(t.address, localData.address)}
-              {renderViewRow(t.notes, localData.notes)}
+              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
             </>
           )}
 
           {localData.type === 'document' && (
             <>
-              {renderViewRow(t.docType, t[localData.documentType as keyof typeof t] || localData.documentType)}
+              {renderViewRow(t.docType, t[localData.documentType as keyof typeof t] || localData.documentType, false, undefined, true)}
               {renderViewRow(t.idNumber, localData.idNumber)}
               {renderViewRow(t.fullName, localData.fullName)}
               {renderViewRow(t.dob, localData.dob)}
-              {renderViewRow(t.gender, localData.gender)}
+              {renderViewRow(t.gender, localData.gender, false, undefined, (localData.documentType === 'health_insurance'))}
               {renderViewRow(t.hometown, localData.hometown)}
               {renderViewRow(t.residence, localData.residence)}
               {renderViewRow(t.expiryDate, localData.expiryDate)}
               {renderViewRow(t.recognition, localData.recognition)}
               {renderViewRow(t.hospital, localData.hospital)}
-              {renderViewRow(t.nationality, localData.nationality)}
-              {renderViewRow(t.class, localData.class)}
+              {renderViewRow(t.nationality, localData.nationality, false, undefined, (localData.documentType === 'driving_license' || localData.documentType === 'passport'))}
+              {renderViewRow(t.class, localData.class, false, undefined, true)}
               {renderViewRow(t.issuer, localData.issuer)}
               {renderViewRow(t.issueDate, localData.issueDate)}
-              {renderViewRow(t.notes, localData.notes)}
+              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
             </>
           )}
         </div>
@@ -1570,12 +1586,27 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
 
   const contactDataForQR = JSON.stringify({ name: localData.fullName || localData.nickname, phone: localData.phone, email: localData.email, addr: localData.address });
 
+  const getDetailTitle = () => {
+    if (!isView) return typeLabels[localData.type];
+    if (localData.type === 'login') return t.detailLogin;
+    if (localData.type === 'card') return t.detailCard;
+    if (localData.type === 'contact') return t.detailContact;
+    if (localData.type === 'document') {
+      if (localData.documentType === 'id_card' || localData.documentType === 'residence_card') return "Thông tin chi tiết Thẻ căn cước";
+      if (localData.documentType === 'health_insurance') return "Thông tin chi tiết Thẻ BHYT";
+      if (localData.documentType === 'driving_license') return "Thông tin chi tiết Giấy phép lái xe";
+      if (localData.documentType === 'passport') return "Thông tin chi tiết Sổ hộ chiếu";
+      return t.detailDoc;
+    }
+    return t.detailedInfo;
+  };
+
   return (
     <div className={`fixed inset-0 z-[100] flex flex-col animate-in slide-in-from-bottom-5 transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d]' : 'bg-[#f5f5f5]'}`}>
       <header className={`h-16 border-b flex items-center px-4 justify-between transition-colors duration-500 ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5'}`}>
         <button onClick={onClose} className="p-2 text-gray-500 hover:text-[#4CAF50]"><Icons.ChevronLeft size={24} /></button>
-        <h2 className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {isView ? t.detailedInfo : typeLabels[localData.type]}
+        <h2 className={`text-[10px] font-black uppercase tracking-widest text-center px-2 flex-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          {getDetailTitle()}
         </h2>
         {!isView ? (
           <button onClick={() => onSave(localData)} className="bg-[#4CAF50] text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-[#4CAF50]/20">
@@ -1641,7 +1672,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                       <div className="space-y-1">
                         <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.url}</label>
                         <div className="relative">
-                          <input disabled={isView} value={localData.url} onChange={e => setLocalData({...localData, url: e.target.value})} className={`w-full border rounded-2xl py-4 pl-6 pr-14 text-[16px] placeholder:text-[13px] outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.urlHint} />
+                          <input disabled={isView} value={localData.url} onChange={e => setLocalData({...localData, url: e.target.value})} className={`w-full border rounded-2xl py-4 px-6 text-[16px] placeholder:text-[13px] outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} placeholder={t.urlHint} />
                           {localData.url && <a href={localData.url} target="_blank" className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4CAF50] p-1"><Icons.ExternalLink size={18}/></a>}
                         </div>
                       </div>
@@ -1734,6 +1765,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                 </div>
                 {copyableField(t.phone, 'phone', localData.phone || "")}
                 {copyableField(t.email, 'email', localData.email || "")}
+                {copyableField('Mã bưu điện (Post Code)', 'postCode', localData.postCode || "", "text", "10000")}
                 {copyableField(t.address, 'address', localData.address || "", "text", t.addressHint)}
                 <div className="space-y-1"><label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-6 text-[16px] placeholder:text-[13px] resize-none outline-none focus:border-[#4CAF50]/30 ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} /></div>
                 <button type="button" onClick={() => setShowContactQR(!showContactQR)} className="w-full bg-[#4CAF50] text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Icons.Share2 size={16} /> {t.createQRCode}</button>
@@ -1773,31 +1805,41 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
 /* --- Generator Screen --- */
 const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast }: any) => {
   const [showQR, setShowQR] = useState(false);
-  const [genMode, setGenMode] = useState<'password' | 'wifi'>('password');
+  const [genMode, setGenMode] = useState<'password' | 'wifi' | 'share'>('password');
   const [wifiSsid, setWifiSsid] = useState('');
   const [wifiSecurity, setWifiSecurity] = useState('WPA');
   const [wifiPassword, setWifiPassword] = useState('');
   const [showWifiPass, setShowWifiPass] = useState(false);
+  const [shareText, setShareText] = useState('');
+  const [showShareQR, setShowShareQR] = useState(false);
+
   const wifiValue = useMemo(() => {
     if (wifiSecurity === 'RAW') return wifiPassword;
     if (wifiSecurity === 'NONE') return `WIFI:S:${wifiSsid};T:nopass;;`;
     return `WIFI:S:${wifiSsid};T:${wifiSecurity};P:${wifiPassword};;`;
   }, [wifiSsid, wifiSecurity, wifiPassword]);
+
   const handleDownload = () => {
     const canvas = document.querySelector('.qr-canvas-target canvas') as HTMLCanvasElement;
     if (!canvas) return;
     const link = document.createElement('a');
-    link.download = `wifi-qr-${wifiSsid || 'securepass'}.png`;
+    link.download = `qr-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     setToast(t.success);
   };
+
   const handleShare = async () => {
     const canvas = document.querySelector('.qr-canvas-target canvas') as HTMLCanvasElement;
     if (!canvas) return;
     const base64 = canvas.toDataURL('image/png');
-    await shareData(`WiFi: ${wifiSsid}`, t.wifiHint, base64);
+    if (genMode === 'wifi') {
+      await shareData(`WiFi: ${wifiSsid}`, t.wifiHint, base64);
+    } else if (genMode === 'share') {
+      await shareData('SecurePass QR Share', shareText, base64);
+    }
   };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-6 justify-between backdrop-blur-xl transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
@@ -1809,6 +1851,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
       <div className={`p-2 flex gap-1 border-b transition-colors duration-500 ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
         <button onClick={() => setGenMode('password')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${genMode === 'password' ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t.genModePassword}</button>
         <button onClick={() => setGenMode('wifi')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${genMode === 'wifi' ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t.genModeWifi}</button>
+        <button onClick={() => setGenMode('share')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${genMode === 'share' ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t.genModeShare}</button>
       </div>
       <main className="flex-1 flex overflow-hidden">
         {showGenHistory && genMode === 'password' && (
@@ -1822,7 +1865,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
           </aside>
         )}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
-          {genMode === 'password' ? (
+          {genMode === 'password' && (
             <div className="space-y-6">
               <div className="space-y-4 text-center">
                 <input readOnly value={genPass} className={`w-full border rounded-3xl p-6 text-center text-xl font-mono text-[#4CAF50] tracking-wider outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5' : 'bg-white border-gray-200'}`} />
@@ -1846,7 +1889,9 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
                 ))}
               </div>
             </div>
-          ) : (
+          )}
+
+          {genMode === 'wifi' && (
             <div className="space-y-6 max-w-lg mx-auto">
               <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl space-y-4 qr-canvas-target">
                  <QRCodeCanvas value={wifiValue} size={220} includeMargin={true} level="H" />
@@ -1883,6 +1928,62 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
               <div className="grid grid-cols-2 gap-3 pt-4">
                 <button onClick={handleDownload} className="bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Icons.Download size={18} /> {t.downloadQr}</button>
                 <button onClick={handleShare} className={`py-4 rounded-3xl font-bold text-xs uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}><Icons.Share2 size={18} /> {t.shareQr}</button>
+              </div>
+            </div>
+          )}
+
+          {genMode === 'share' && (
+            <div className="space-y-6 max-w-lg mx-auto">
+              <div className={`p-5 rounded-3xl border transition-colors ${isDark ? 'bg-white/5 border-white/5' : 'bg-blue-50 border-blue-100'}`}>
+                <p className={`text-xs leading-relaxed font-medium ${isDark ? 'text-gray-400' : 'text-blue-700'}`}>
+                  {t.shareQrInstruction}
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className={`text-[9px] font-black uppercase tracking-widest ml-1 mb-1.5 block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.content}</label>
+                  <div className="relative">
+                    <textarea 
+                      rows={4}
+                      value={shareText} 
+                      onChange={e => { setShareText(e.target.value); setShowShareQR(false); }} 
+                      className={`w-full border rounded-2xl p-6 text-[16px] placeholder:text-[13px] resize-none outline-none focus:border-[#4CAF50]/40 transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} 
+                      placeholder={t.shareQrPlaceholder}
+                    />
+                    <button type="button" onClick={() => copy(shareText)} className="absolute right-4 bottom-4 text-gray-600 hover:text-[#4CAF50] p-2">
+                      <Icons.Copy size={18}/>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {showShareQR && shareText && (
+                <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl space-y-4 qr-canvas-target animate-in zoom-in-95">
+                  <QRCodeCanvas value={shareText} size={220} includeMargin={true} level="H" />
+                  <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest truncate max-w-full px-4">{shareText}</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <button 
+                  onClick={() => setShowShareQR(true)} 
+                  disabled={!shareText}
+                  className={`w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-30`}
+                >
+                  <Icons.Camera size={18} /> {t.createQRCode}
+                </button>
+                
+                {showShareQR && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={handleDownload} className={`py-4 rounded-3xl font-bold text-xs uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}>
+                      <Icons.Download size={18} /> {t.downloadQr}
+                    </button>
+                    <button onClick={handleShare} className={`py-4 rounded-3xl font-bold text-xs uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}>
+                      <Icons.Share2 size={18} /> {t.shareQr}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
