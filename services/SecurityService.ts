@@ -52,9 +52,23 @@ export class SecurityService {
   }
 
   static async decrypt(encryptedData: { ciphertext: string; iv: string; salt: string }, password: string): Promise<string> {
-    const salt = this.base64ToBuf(encryptedData.salt);
-    const iv = this.base64ToBuf(encryptedData.iv);
-    const ciphertext = this.base64ToBuf(encryptedData.ciphertext);
+    if (!encryptedData || !encryptedData.salt || !encryptedData.iv || !encryptedData.ciphertext) {
+      throw new Error('Malformed encryption data');
+    }
+    
+    let salt: Uint8Array;
+    let iv: Uint8Array;
+    let ciphertext: Uint8Array;
+
+    try {
+      salt = this.base64ToBuf(encryptedData.salt);
+      iv = this.base64ToBuf(encryptedData.iv);
+      ciphertext = this.base64ToBuf(encryptedData.ciphertext);
+    } catch (e) {
+      console.error("Base64 Decode Error:", e);
+      throw new Error('Malformed data format');
+    }
+
     const key = await this.deriveKey(password, salt);
 
     try {
@@ -64,7 +78,13 @@ export class SecurityService {
         ciphertext
       );
       return new TextDecoder().decode(decrypted);
-    } catch (e) {
+    } catch (e: any) {
+      // Explicitly log the error name and message to catch OperationError or DataError
+      const errorMsg = e instanceof Error ? e.message : (e.name || 'Unknown Crypto Error');
+      console.error("SubtleCrypto Decryption Error:", errorMsg, e);
+      
+      // In AES-GCM, any change to ciphertext, IV, or Key results in a failure.
+      // We throw a user-friendly error.
       throw new Error('Invalid Master Password');
     }
   }
@@ -89,7 +109,6 @@ export class SecurityService {
     const challenge = window.crypto.getRandomValues(new Uint8Array(32));
     const userId = window.crypto.getRandomValues(new Uint8Array(16));
 
-    // This call triggers the OS-level Biometric dialog (FaceID on iOS, BiometricPrompt on Android)
     const credential = await navigator.credentials.create({
       publicKey: {
         challenge,
@@ -110,8 +129,6 @@ export class SecurityService {
 
     if (!credential) throw new Error("Enrollment failed");
 
-    // We use the hardware-secured session to encrypt the actual Master Password
-    // The "Bio-Link" is the secret that only this app on this device knows.
     const encrypted = await this.encrypt(masterPassword, this.BIO_STORAGE_KEY);
     
     localStorage.setItem('securepass_biometric_id', credential.id);
@@ -127,7 +144,6 @@ export class SecurityService {
     const challenge = window.crypto.getRandomValues(new Uint8Array(32));
     const rawId = Uint8Array.from(atob(credentialId.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 
-    // This call triggers the OS-level Biometric verification dialog
     const assertion = await navigator.credentials.get({
       publicKey: {
         challenge,
@@ -141,15 +157,33 @@ export class SecurityService {
 
     if (!assertion) throw new Error("Authentication failed");
 
-    // Success! Now we can safely decrypt the stored master password using our internal key
     return await this.decrypt(JSON.parse(bioVault), this.BIO_STORAGE_KEY);
   }
 
+  /**
+   * Stack-safe conversion from ArrayBuffer to Base64.
+   * String.fromCharCode(...spread) fails for buffers > ~65KB.
+   */
   private static bufToBase64(buf: ArrayBuffer | Uint8Array): string {
-    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
+  /**
+   * Stack-safe conversion from Base64 to Uint8Array.
+   */
   private static base64ToBuf(base64: string): Uint8Array {
-    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
   }
 }
