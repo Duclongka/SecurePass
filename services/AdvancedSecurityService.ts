@@ -1,11 +1,10 @@
 
 /**
  * AdvancedSecurityService
- * Handles multi-layered encryption, HMAC integrity, and Key-File logic.
- * Standard: AES-GCM (256-bit) + HMAC-SHA256 (256-bit)
+ * Xử lý mã hóa đa lớp, xác thực thiết bị và logic File khóa (.vpass)
  */
 export class AdvancedSecurityService {
-  private static ITERATIONS = 150000; // Increased for better security
+  private static ITERATIONS = 150000;
   private static KEY_LEN = 256;
 
   private static bufToBase64(buf: ArrayBuffer | Uint8Array): string {
@@ -56,89 +55,12 @@ export class AdvancedSecurityService {
   }
 
   /**
-   * Verifies if a password matches a Key File
-   */
-  static async verifyPasswordWithKeyFile(password: string, keyFile: any): Promise<boolean> {
-    try {
-      const salt = this.base64ToBuf(keyFile.salt);
-      const { macKey } = await this.deriveKeys(password, salt);
-      const fingerprint = await window.crypto.subtle.sign('HMAC', macKey, new TextEncoder().encode(keyFile.deviceToken));
-      return this.bufToBase64(fingerprint) === keyFile.ownerFingerprint;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Encrypts vault data tied to password and salt from keyfile
-   */
-  static async encryptVault(data: string, password: string, saltBase64: string): Promise<string> {
-    const salt = this.base64ToBuf(saltBase64);
-    const { encKey, macKey } = await this.deriveKeys(password, salt);
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encoder = new TextEncoder();
-    
-    const ciphertext = await window.crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      encKey,
-      encoder.encode(data)
-    );
-
-    const signature = await window.crypto.subtle.sign(
-      'HMAC',
-      macKey,
-      ciphertext
-    );
-
-    return JSON.stringify({
-      v: '2.1',
-      data: this.bufToBase64(ciphertext),
-      iv: this.bufToBase64(iv),
-      hmac: this.bufToBase64(signature),
-      ts: Date.now()
-    });
-  }
-
-  /**
-   * Decrypts vault data with integrity verification
-   */
-  static async decryptVault(payloadStr: string, password: string, saltBase64: string): Promise<string> {
-    const payload = JSON.parse(payloadStr);
-    const salt = this.base64ToBuf(saltBase64);
-    const { encKey, macKey } = await this.deriveKeys(password, salt);
-
-    const ciphertext = this.base64ToBuf(payload.data);
-    const signature = this.base64ToBuf(payload.hmac);
-    const iv = this.base64ToBuf(payload.iv);
-
-    const isValid = await window.crypto.subtle.verify('HMAC', macKey, signature, ciphertext);
-    if (!isValid) throw new Error("INTEGRITY_FAILURE");
-
-    const decrypted = await window.crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv },
-      encKey,
-      ciphertext
-    );
-
-    return new TextDecoder().decode(decrypted);
-  }
-
-  static generateDeviceId(): string {
-    let id = localStorage.getItem('securepass_device_id');
-    if (!id) {
-      id = 'DEV-' + Math.random().toString(36).substring(2, 15) + '-' + Date.now();
-      localStorage.setItem('securepass_device_id', id);
-    }
-    return id;
-  }
-
-  /**
-   * Generates a Key File content (.vpass)
+   * Tạo tệp khóa mới chứa Salt và dấu vân tay thiết bị
    */
   static async generateKeyFile(password: string): Promise<string> {
     const salt = window.crypto.getRandomValues(new Uint8Array(16));
     const saltBase64 = this.bufToBase64(salt);
-    const deviceId = this.generateDeviceId();
+    const deviceId = this.getOrCreateDeviceId();
     
     const { macKey } = await this.deriveKeys(password, salt);
     const fingerprint = await window.crypto.subtle.sign('HMAC', macKey, new TextEncoder().encode(deviceId));
@@ -152,26 +74,78 @@ export class AdvancedSecurityService {
     });
   }
 
-  /**
-   * Encrypts the password for local storage fallback (same device fallback)
-   */
-  static async encryptPasswordForFallback(password: string, keyFile: any): Promise<string> {
-    const salt = this.base64ToBuf(keyFile.salt);
-    const { encKey } = await this.deriveKeys(keyFile.deviceToken, salt); // Use deviceToken as key to wrap pass
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encoder = new TextEncoder();
-    const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, encKey, encoder.encode(password));
-    return JSON.stringify({ data: this.bufToBase64(encrypted), iv: this.bufToBase64(iv) });
+  static getOrCreateDeviceId(): string {
+    let id = localStorage.getItem('securepass_device_id');
+    if (!id) {
+      id = 'DEV-' + Math.random().toString(36).substring(2, 15) + '-' + Date.now();
+      localStorage.setItem('securepass_device_id', id);
+    }
+    return id;
   }
 
   /**
-   * Decrypts the password using keyfile salt and device token (same device fallback)
+   * Lưu mật khẩu chủ vào thiết bị (mã hóa bằng Device ID + Salt của File khóa)
    */
-  static async decryptPasswordForFallback(encryptedPassJson: string, keyFile: any): Promise<string> {
-    const payload = JSON.parse(encryptedPassJson);
+  static async rememberMasterPassword(password: string, keyFile: any): Promise<void> {
+    const deviceId = this.getOrCreateDeviceId();
     const salt = this.base64ToBuf(keyFile.salt);
-    const { encKey } = await this.deriveKeys(keyFile.deviceToken, salt);
-    const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: this.base64ToBuf(payload.iv) }, encKey, this.base64ToBuf(payload.data));
-    return new TextDecoder().decode(decrypted);
+    
+    // Tạo khóa từ Device ID và Salt của File khóa
+    const { encKey } = await this.deriveKeys(deviceId, salt);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      encKey,
+      new TextEncoder().encode(password)
+    );
+
+    const storageObj = {
+      data: this.bufToBase64(encrypted),
+      iv: this.bufToBase64(iv),
+      keyFileFingerprint: keyFile.ownerFingerprint // Dùng để đối soát File khóa
+    };
+
+    localStorage.setItem('securepass_wrapped_master', JSON.stringify(storageObj));
+  }
+
+  /**
+   * Khôi phục mật khẩu chủ từ bộ nhớ thiết bị
+   */
+  static async recoverMasterPassword(keyFile: any): Promise<string | null> {
+    const wrapped = localStorage.getItem('securepass_wrapped_master');
+    if (!wrapped) return null;
+
+    try {
+      const storageObj = JSON.parse(wrapped);
+      // Kiểm tra xem File khóa hiện tại có khớp với File khóa lúc lưu hay không
+      if (storageObj.keyFileFingerprint !== keyFile.ownerFingerprint) return null;
+
+      const deviceId = this.getOrCreateDeviceId();
+      const salt = this.base64ToBuf(keyFile.salt);
+      const { encKey } = await this.deriveKeys(deviceId, salt);
+
+      const decrypted = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: this.base64ToBuf(storageObj.iv) },
+        encKey,
+        this.base64ToBuf(storageObj.data)
+      );
+
+      return new TextDecoder().decode(decrypted);
+    } catch (e) {
+      console.error("Recovery failed", e);
+      return null;
+    }
+  }
+
+  static async verifyKeyFile(password: string, keyFile: any): Promise<boolean> {
+    try {
+      const salt = this.base64ToBuf(keyFile.salt);
+      const { macKey } = await this.deriveKeys(password, salt);
+      const deviceId = this.getOrCreateDeviceId();
+      const fingerprint = await window.crypto.subtle.sign('HMAC', macKey, new TextEncoder().encode(deviceId));
+      return this.bufToBase64(fingerprint) === keyFile.ownerFingerprint;
+    } catch {
+      return false;
+    }
   }
 }
