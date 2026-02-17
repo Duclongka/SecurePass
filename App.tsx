@@ -56,7 +56,7 @@ const translations = {
     cardNameHint: 'LE DUC LONG',
     cardNumber: 'Card Number',
     cardType: 'Card Type',
-    expiryMonth: 'Duration',
+    expiryMonth: 'MM/YY',
     expiryYear: 'Expiry Year',
     nickname: 'Nickname',
     nicknameHint: 'Long Thanh, Giang coi...',
@@ -619,7 +619,7 @@ const App: React.FC = () => {
         
         if (recovered) {
             setToast(t.keyFileDetected);
-            // FIX: Tự động đăng nhập ngay lập tức nếu file khóa đã được ghi nhớ
+            // Tự động đăng nhập nếu file đã được ghi nhớ
             handleLogin(undefined, recovered);
         } else {
             setToast(t.firstTimeUnlock);
@@ -643,7 +643,7 @@ const App: React.FC = () => {
   };
 
   const handleMasterPasswordChange = async (newPassword: string) => {
-    // Khi đổi mật khẩu, xóa dấu vết ghi nhớ cũ để đảm bảo an toàn
+    // Khi đổi mật khẩu, xóa dấu vết ghi nhớ cũ để đảm bảo an toàn, yêu cầu thiết lập lại
     localStorage.removeItem('securepass_wrapped_master');
     
     const verification = await SecurityService.encrypt("VALID_SESSION", newPassword);
@@ -673,7 +673,7 @@ const App: React.FC = () => {
         const content = event.target?.result as string;
         JSON.parse(content);
         localStorage.setItem('securepass_vault', content);
-        // Khi nhập dữ liệu mới, yêu cầu nhập mật khẩu lại
+        // Khi nhập dữ liệu mới, yêu cầu nhập mật khẩu lại để bảo mật (reset tin cậy thiết bị)
         localStorage.removeItem('securepass_wrapped_master');
         setToast('Đã nhập dữ liệu. Vui lòng mở khóa lại.');
         handleLock();
@@ -896,7 +896,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
       </div>
       
       <form onSubmit={handleLogin} className="space-y-4">
-        {/* Nếu thiết bị đã ghi nhớ VÀ đã chọn tệp khóa, ẩn input mật khẩu để trải nghiệm gọn nhẹ nhất */}
+        {/* Logic: Nếu thiết bị đã tin cậy (đã lưuwrapped master) AND đã có tệp khóa -> Ẩn ô nhập mật khẩu */}
         {(!isKeyFileRemembered || !uploadedKeyFile) ? (
             <div className="space-y-1 animate-in slide-in-from-top-2">
                 <input 
@@ -1479,7 +1479,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
   const isView = mode === 'view';
   const typeLabels: Record<string, string> = { login: t.typeLogin, card: t.typeCard, contact: t.typeContact, document: t.typeDocument };
   const currentSubFolders = settings.subFolders[localData.group] || [];
-  const bankSubfolders = settings.subFolders['Ngân hàng'] || [];
+  const bankSubfolders = (settings.subFolders['Ngân hàng'] || []).filter((b: string) => !WALLET_LIST.includes(b));
   
   const isWallet = localData.type === 'card' && WALLET_LIST.includes(localData.title);
 
