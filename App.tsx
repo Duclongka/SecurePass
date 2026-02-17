@@ -56,7 +56,7 @@ const translations = {
     cardNameHint: 'LE DUC LONG',
     cardNumber: 'Card Number',
     cardType: 'Card Type',
-    expiryMonth: 'MM/YY',
+    expiryMonth: 'Duration',
     expiryYear: 'Expiry Year',
     nickname: 'Nickname',
     nicknameHint: 'Long Thanh, Giang coi...',
@@ -143,17 +143,17 @@ const translations = {
     uppercaseWarning: 'Please enter UPPERCASE letters',
     indefinite: 'Indefinite',
     chooseDocType: '-- Choose Document Type --',
-    chooseCardType: '-- Card Type --',
-    chooseBank: '-- Select Bank --',
-    chooseGender: '-- Gender --',
-    chooseClass: '-- Class --',
+    chooseCardType: '-- Loại thẻ --',
+    chooseBank: '-- Chọn Ngân hàng --',
+    chooseGender: '-- Giới tính --',
+    chooseClass: '-- Hạng --',
     themeLabel: 'Appearance',
     themeDark: 'Dark Mode',
     themeLight: 'Light Mode',
     langEn: 'English',
     langVi: 'Vietnamese',
     createQRCode: 'Create QR Code',
-    atmPin: 'ATM PIN (at ATM)',
+    atmPin: 'Mật khẩu (Tại cây rút tiền ATM)',
     cvv: 'PIN or CVV/CVC on card',
     qrImage: 'Account QR Image',
     frontImage: 'Front Side Image',
@@ -456,25 +456,41 @@ const App: React.FC = () => {
   const clipboardTimer = useRef<number | null>(null);
 
   const [settings, setSettings] = useState<SettingsState>(() => {
-    const saved = localStorage.getItem('securepass_settings');
-    const defaultSettings: SettingsState = {
-      autoLockMinutes: 1,
-      clearClipboardSeconds: 30,
-      autoLockEnabled: true,
-      clearClipboardEnabled: true,
-      biometricEnabled: false,
-      language: 'vi',
-      theme: 'dark',
-      groups: ['Banking', 'Shopping', 'Study', 'Game'],
-      folders: DEFAULT_FOLDERS,
-      subFolders: DEFAULT_SUBFOLDERS,
-      hasMasterPassword: !!localStorage.getItem('securepass_master_hash')
-    };
-    return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+    try {
+        const saved = localStorage.getItem('securepass_settings');
+        const defaultSettings: SettingsState = {
+          autoLockMinutes: 1,
+          clearClipboardSeconds: 30,
+          autoLockEnabled: true,
+          clearClipboardEnabled: true,
+          biometricEnabled: false,
+          language: 'vi',
+          theme: 'dark',
+          groups: ['Banking', 'Shopping', 'Study', 'Game'],
+          folders: DEFAULT_FOLDERS,
+          subFolders: DEFAULT_SUBFOLDERS,
+          hasMasterPassword: !!localStorage.getItem('securepass_master_hash')
+        };
+        return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+    } catch {
+        return {
+          autoLockMinutes: 1,
+          clearClipboardSeconds: 30,
+          autoLockEnabled: true,
+          clearClipboardEnabled: true,
+          biometricEnabled: false,
+          language: 'vi',
+          theme: 'dark',
+          groups: ['Banking', 'Shopping', 'Study', 'Game'],
+          folders: DEFAULT_FOLDERS,
+          subFolders: DEFAULT_SUBFOLDERS,
+          hasMasterPassword: false
+        } as SettingsState;
+    }
   });
 
   const isDark = settings.theme === 'dark';
-  const t = translations[settings.language];
+  const t = translations[settings.language] || translations.vi;
 
   useEffect(() => {
     if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_id')) {
@@ -529,11 +545,14 @@ const App: React.FC = () => {
     e?.preventDefault();
     let passToUse = providedPass || masterPassword;
     
-    // Logic "Mở khóa nhanh": Nếu đã có File khóa và thiết bị đã ghi nhớ, tự khôi phục mật khẩu
     if (!passToUse && uploadedKeyFile) {
-        const recovered = await AdvancedSecurityService.recoverMasterPassword(uploadedKeyFile);
-        if (recovered) {
-            passToUse = recovered;
+        try {
+            const recovered = await AdvancedSecurityService.recoverMasterPassword(uploadedKeyFile);
+            if (recovered) {
+                passToUse = recovered;
+            }
+        } catch (err) {
+            console.error("Auto recovery failed", err);
         }
     }
 
@@ -569,7 +588,6 @@ const App: React.FC = () => {
         }
       }
 
-      // GHI NHỚ THIẾT BỊ: Nếu đăng nhập thành công bằng file khóa, hãy ghi nhớ mật khẩu
       if (uploadedKeyFile) {
         await AdvancedSecurityService.rememberMasterPassword(passToUse, uploadedKeyFile);
       }
@@ -613,13 +631,11 @@ const App: React.FC = () => {
         
         setUploadedKeyFile(content);
         
-        // Kiểm tra xem thiết bị này đã ghi nhớ mật khẩu cho file này chưa
         const recovered = await AdvancedSecurityService.recoverMasterPassword(content);
         setIsKeyFileRemembered(!!recovered);
         
         if (recovered) {
             setToast(t.keyFileDetected);
-            // Tự động đăng nhập nếu file đã được ghi nhớ
             handleLogin(undefined, recovered);
         } else {
             setToast(t.firstTimeUnlock);
@@ -643,7 +659,6 @@ const App: React.FC = () => {
   };
 
   const handleMasterPasswordChange = async (newPassword: string) => {
-    // Khi đổi mật khẩu, xóa dấu vết ghi nhớ cũ để đảm bảo an toàn, yêu cầu thiết lập lại
     localStorage.removeItem('securepass_wrapped_master');
     
     const verification = await SecurityService.encrypt("VALID_SESSION", newPassword);
@@ -673,7 +688,6 @@ const App: React.FC = () => {
         const content = event.target?.result as string;
         JSON.parse(content);
         localStorage.setItem('securepass_vault', content);
-        // Khi nhập dữ liệu mới, yêu cầu nhập mật khẩu lại để bảo mật (reset tin cậy thiết bị)
         localStorage.removeItem('securepass_wrapped_master');
         setToast('Đã nhập dữ liệu. Vui lòng mở khóa lại.');
         handleLock();
@@ -772,7 +786,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleVaultTabClick = () => {
+  const handleVaultTapClick = () => {
     const now = Date.now();
     if (now - lastVaultTap < 300) {
       setActiveCategory(null);
@@ -787,7 +801,7 @@ const App: React.FC = () => {
 
   return (
     <div 
-      className={`h-full flex flex-col overflow-hidden selection:bg-[#4CAF50]/20 selection:text-[#4CAF50] transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-[#1a1a1a]'}`}
+      className={`h-screen w-full flex flex-col overflow-hidden selection:bg-[#4CAF50]/20 selection:text-[#4CAF50] transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-[#1a1a1a]'}`}
       onTouchStart={(e) => { touchStartX.current = e.touches[0].screenX; }}
       onTouchEnd={handleSwipeBack}
     >
@@ -855,7 +869,7 @@ const App: React.FC = () => {
             </div>
           )}
           <nav className={`h-16 border-t flex items-center justify-around px-4 sticky bottom-0 z-[70] pb-safe transition-colors duration-500 ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5'}`}>
-            <button onClick={handleVaultTabClick} className={`flex flex-col items-center p-3 transition-colors ${view === 'vault' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}>
+            <button onClick={handleVaultTapClick} className={`flex flex-col items-center p-3 transition-colors ${view === 'vault' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}>
               <Icons.Database size={24} />
             </button>
             <div className="relative">
@@ -896,7 +910,6 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
       </div>
       
       <form onSubmit={handleLogin} className="space-y-4">
-        {/* Logic: Nếu thiết bị đã tin cậy (đã lưuwrapped master) AND đã có tệp khóa -> Ẩn ô nhập mật khẩu */}
         {(!isKeyFileRemembered || !uploadedKeyFile) ? (
             <div className="space-y-1 animate-in slide-in-from-top-2">
                 <input 
@@ -1108,7 +1121,6 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, masterPass
     setShowMP(true);
   };
   const exportKeyFile = async () => {
-    // Xuất file khóa mới tương thích với AdvancedSecurityService
     const keyFileContent = await AdvancedSecurityService.generateKeyFile(newMP);
     const blob = new Blob([keyFileContent], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1242,7 +1254,7 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
     if (!file) return;
     if (!file.name.includes('securepass_backup')) {
       setImportFileError(t.importFileErrorMsg);
-      e.target.value = ''; // Reset file input
+      e.target.value = '';
       return;
     }
     setImportFileError(null);
@@ -1326,7 +1338,6 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
       case 'folders':
         return (
           <div className="space-y-6 animate-in slide-in-from-right duration-300">
-            {/* Top-level Folders Section */}
             <section className={`rounded-[2.5rem] p-6 border shadow-xl ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
               <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2 mb-4 px-1"><Icons.Folder size={14}/> {t.foldersHeader}</h3>
               <div className="space-y-4">
@@ -1344,8 +1355,6 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
                 </div>
               </div>
             </section>
-
-            {/* Sub-folders Section */}
             <section className={`rounded-[2.5rem] p-6 border shadow-xl ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
               <h3 className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest flex items-center gap-2 mb-4 px-1"><Icons.Network size={14}/> {t.settingsSubFolder}</h3>
               <div className="space-y-4">
@@ -1357,7 +1366,6 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
                   <option value="">-- {t.foldersHeader} --</option>
                   {settings.folders.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
-                
                 {selectedRoot && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-4">
                     <div className="flex gap-2">
@@ -1369,7 +1377,6 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
                       />
                       <button onClick={handleAddSubFolder} className="bg-[#4CAF50] p-4 rounded-2xl text-white"><Icons.Plus size={20}/></button>
                     </div>
-                    
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {(settings.subFolders[selectedRoot] || []).map(sub => (
                         <div key={sub} className={`flex items-center justify-between p-3 border rounded-2xl ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
@@ -1437,24 +1444,14 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-4 justify-between backdrop-blur-xl transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
-        <button 
-          onClick={() => {
-            if (subView === 'main') setView('vault');
-            else setSubView('main');
-          }} 
-          className={`p-2 transition-colors ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}
-        >
+        <button onClick={() => { if (subView === 'main') setView('vault'); else setSubView('main'); }} className={`p-2 transition-colors ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>
           <Icons.ChevronLeft size={24} />
         </button>
-        <h2 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {subView === 'main' ? t.settingsTab : t[subView as keyof typeof t] || subView}
-        </h2>
+        <h2 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{subView === 'main' ? t.settingsTab : t[subView as keyof typeof t] || subView}</h2>
         <div className="w-10"></div>
       </header>
       <main className="flex-1 overflow-y-auto p-4 pb-32">
-        <div className="max-w-xl mx-auto">
-          {subView === 'main' ? renderMainList() : renderSubView()}
-        </div>
+        <div className="max-w-xl mx-auto">{subView === 'main' ? renderMainList() : renderSubView()}</div>
       </main>
     </div>
   );
@@ -1471,16 +1468,13 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
       documentType: '', atmPin: '', qrImage: '', frontImage: '', backImage: '', postCode: '', cvv: '', linkedBank: ''
     };
   });
-  const [showPass, setShowPass] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [showContactQR, setShowContactQR] = useState(false);
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({});
-
   const isView = mode === 'view';
   const typeLabels: Record<string, string> = { login: t.typeLogin, card: t.typeCard, contact: t.typeContact, document: t.typeDocument };
   const currentSubFolders = settings.subFolders[localData.group] || [];
   const bankSubfolders = (settings.subFolders['Ngân hàng'] || []).filter((b: string) => !WALLET_LIST.includes(b));
-  
   const isWallet = localData.type === 'card' && WALLET_LIST.includes(localData.title);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
@@ -1503,7 +1497,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             type={type} 
             value={value} 
             onChange={e => setLocalData({...localData, [field]: e.target.value})} 
-            className={`w-full border rounded-2xl py-3.5 pl-4 pr-12 text-[15px] font-medium focus:border-[#4CAF50]/60 outline-none transition-all disabled:opacity-80 ${center ? 'text-center' : ''} ${isDark ? 'bg-[#181818] border-white/5 text-white placeholder-gray-800' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 shadow-sm'} ${type === 'date' && !value ? (isDark ? 'text-gray-800' : 'text-gray-400') : ''} ${error ? 'border-red-500/50' : ''} [&::-webkit-calendar-picker-indicator]:opacity-40 ${isDark ? '[&::-webkit-calendar-picker-indicator]:invert' : ''}`}
+            className={`w-full border rounded-2xl py-3.5 pl-4 pr-12 text-[15px] font-medium focus:border-[#4CAF50]/60 outline-none transition-all disabled:opacity-80 ${center ? 'text-center' : ''} ${isDark ? 'bg-[#181818] border-white/5 text-white placeholder-gray-800' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 shadow-sm'} ${type === 'date' && !value ? (isDark ? 'text-gray-800' : 'text-gray-400') : ''} ${error ? 'border-red-500/50' : ''}`}
             placeholder={placeholder}
           />
           <button type="button" onClick={() => copy(value)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#4CAF50] transition-colors p-1">
@@ -1519,19 +1513,10 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
     <div className="space-y-2 w-full">
       <div className="flex items-center justify-between px-1">
         <label className={`text-[10px] font-black uppercase tracking-widest block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{label}</label>
-        {localData[field] && (
-          <button onClick={() => shareData(label, "Shared document image", localData[field])} className="text-[#4CAF50] p-1"><Icons.Share2 size={16}/></button>
-        )}
+        {localData[field] && <button onClick={() => shareData(label, "Shared image", localData[field])} className="text-[#4CAF50] p-1"><Icons.Share2 size={16}/></button>}
       </div>
       <label className={`w-full aspect-[1.6/1] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all relative ${isDark ? 'bg-black/40 border-white/10 hover:border-[#4CAF50]/40' : 'bg-white border-gray-200 hover:border-[#4CAF50]/40 shadow-sm'}`}>
-        {localData[field] ? (
-          <img src={localData[field]} alt={field} className="w-full h-full object-cover" />
-        ) : (
-          <div className="flex flex-col items-center p-4">
-            <Icons.Plus className="text-gray-500 mb-2" size={24} />
-            <span className="text-[10px] text-gray-500 font-bold uppercase text-center">{label}</span>
-          </div>
-        )}
+        {localData[field] ? <img src={localData[field]} alt={field} className="w-full h-full object-cover" /> : <div className="flex flex-col items-center p-4"><Icons.Plus className="text-gray-500 mb-2" size={24} /><span className="text-[10px] text-gray-500 font-bold uppercase text-center">{label}</span></div>}
         <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, field)} className="hidden" disabled={isView} />
       </label>
     </div>
@@ -1544,7 +1529,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         return (
           <div className="space-y-5 animate-in fade-in duration-300">
             {copyableField(t.idNumber, 'idNumber', localData.idNumber || "", "number", "00109000xxxx")}
-            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "LÊ ĐỨC LONG", val => (val && val !== val.toUpperCase()) ? t.uppercaseWarning : null)}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "LÊ ĐỨC LONG")}
             <div className="grid grid-cols-2 gap-3">
                {copyableField(t.dob, 'dob', localData.dob || "", "date")}
                <div className="space-y-1.5">
@@ -1556,13 +1541,13 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   </select>
                </div>
             </div>
-            {copyableField(t.hometown, 'hometown', localData.hometown || "", "text", "Hà Tĩnh, Việt Nam")}
-            {copyableField(t.residence, 'residence', localData.residence || "", "text", "P. Sông Trí, Kỳ Anh, Hà Tĩnh")}
+            {copyableField(t.hometown, 'hometown', localData.hometown || "", "text", "Quê quán")}
+            {copyableField(t.residence, 'residence', localData.residence || "", "text", "Nơi thường trú")}
             <div className="grid grid-cols-2 gap-3">
                {copyableField('Giá trị đến', 'expiryDate', localData.expiryDate || "", "date")}
                {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
             </div>
-            {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cục trưởng cục cảnh sát...")}
+            {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cơ quan cấp")}
             {renderDocImageRow('frontImage', t.frontImageBtn)}
             {renderDocImageRow('backImage', t.backImageBtn)}
           </div>
@@ -1571,7 +1556,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         return (
           <div className="space-y-5 animate-in fade-in duration-300">
             {copyableField('Số sổ', 'idNumber', localData.idNumber || "", "number", "1234567890")}
-            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "NGUYỄN VĂN A", val => (val && val !== val.toUpperCase()) ? t.uppercaseWarning : null)}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên")}
             <div className="grid grid-cols-2 gap-3">
                {copyableField(t.dob, 'dob', localData.dob || "", "date")}
                <div className="space-y-1.5">
@@ -1583,8 +1568,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   </select>
                </div>
             </div>
-            {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Bệnh viện Đa khoa Kỳ Anh")}
-            {copyableField('Nơi cấp', 'issuer', localData.issuer || "", "text", "BHXH Tỉnh Hà Tĩnh")}
+            {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Bệnh viện ĐK")}
+            {copyableField('Nơi cấp', 'issuer', localData.issuer || "", "text", "BHXH Tỉnh")}
             {renderDocImageRow('frontImage', t.frontImageBtn)}
           </div>
         );
@@ -1592,7 +1577,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         return (
           <div className="space-y-5 animate-in fade-in duration-300">
             {copyableField('Số bằng lái', 'idNumber', localData.idNumber || "", "number", "12 chữ số")}
-            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "LÊ ĐỨC LONG", val => (val && val !== val.toUpperCase()) ? t.uppercaseWarning : null)}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên")}
             <div className="grid grid-cols-2 gap-3">
                {copyableField(t.dob, 'dob', localData.dob || "", "date")}
                <div className="space-y-1.5">
@@ -1603,12 +1588,12 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   </select>
                </div>
             </div>
-            {copyableField(t.residence, 'residence', localData.residence || "", "text", "Kỳ Anh, Hà Tĩnh")}
+            {copyableField(t.residence, 'residence', localData.residence || "", "text", "Nơi cư trú")}
             <div className="grid grid-cols-2 gap-3">
                {copyableField('Ngày cấp', 'issueDate', localData.issueDate || "", "date")}
                {copyableField('Hết hạn', 'expiryDate', localData.expiryDate || "", "date")}
             </div>
-            {copyableField('Cơ quan cấp', 'issuer', localData.issuer || "", "text", "Sở GTVT Hà Tĩnh")}
+            {copyableField('Cơ quan cấp', 'issuer', localData.issuer || "", "text", "Sở GTVT")}
             {renderDocImageRow('frontImage', t.frontImageBtn)}
             {renderDocImageRow('backImage', t.backImageBtn)}
           </div>
@@ -1616,11 +1601,11 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
       case 'passport':
         return (
           <div className="space-y-5 animate-in fade-in duration-300">
-            {copyableField('Số hộ chiếu', 'idNumber', localData.idNumber || "", "number", "Số hộ chiếu")}
-            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "NGUYEN VAN A")}
+            {copyableField('Số hộ chiếu', 'idNumber', localData.idNumber || "", "number", "P01234567")}
+            {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên")}
             <div className="grid grid-cols-2 gap-3">
                {copyableField(t.dob, 'dob', localData.dob || "", "date")}
-               {copyableField('Quốc tịch', 'nationality', localData.nationality || "", "text", "VIETNAMESE")}
+               {copyableField('Quốc tịch', 'nationality', localData.nationality || "", "text", "Quốc tịch")}
             </div>
             <div className="grid grid-cols-2 gap-3">
                {copyableField('Ngày cấp', 'issueDate', localData.issueDate || "", "date")}
@@ -1634,6 +1619,18 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
     }
   };
 
+  const renderViewOnly = () => (
+    <div className="max-w-md mx-auto space-y-4 animate-in fade-in duration-300 pb-24">
+      <div className={`rounded-3xl border overflow-hidden shadow-lg ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200'}`}>
+        {localData.type === 'login' && (<>{renderViewRow(t.title, localData.title, false, undefined, true)}{renderViewRow(t.username, localData.username)}{renderViewRow(t.password, localData.password, true, 'password')}{renderViewRow(t.pinCode, localData.pin, true, 'pin')}{renderViewRow(t.authCode, localData.authCode, true, 'authCode')}{renderViewRow(t.url, localData.url)}</>)}
+        {localData.type === 'card' && (<>{renderViewRow(t.title, localData.title, false, undefined, true)}{!isWallet ? (<>{renderViewRow(t.cardNumber, localData.cardNumber)}{renderViewRow(t.cardName, localData.cardHolder)}{renderViewRow(t.expiryMonth, localData.expiryMonth)}{renderViewRow(t.atmPin, localData.atmPin, true, 'atmPin')}</>) : (<>{renderViewRow(t.phone, localData.phone)}{renderViewRow(t.password, localData.password, true, 'password')}</>)}</>)}
+        {localData.type === 'contact' && (<>{renderViewRow(t.fullName, localData.fullName)}{renderViewRow(t.phone, localData.phone)}{renderViewRow(t.email, localData.email)}{renderViewRow(t.address, localData.address)}</>)}
+        {localData.type === 'document' && (<>{renderViewRow(t.docType, t[localData.documentType as keyof typeof t] || localData.documentType, false, undefined, true)}{renderViewRow(t.idNumber, localData.idNumber)}{renderViewRow(t.fullName, localData.fullName)}{renderViewRow(t.dob, localData.dob)}</>)}
+        {renderViewRow(t.notes, localData.notes, false, undefined, true)}
+      </div>
+    </div>
+  );
+
   const renderViewRow = (label: string, value: string, isSecret: boolean = false, fieldKey?: string, hideCopy: boolean = false) => {
     if (!value || value === '---') return null;
     const isVisible = fieldKey ? !!visibleFields[fieldKey] : true;
@@ -1643,17 +1640,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           <div className="space-y-1.5 overflow-hidden flex-1">
             <span className={`text-[10px] font-black uppercase tracking-widest block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{label}</span>
             <div className="flex items-center gap-2">
-              <span className={`text-[15px] font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'} ${isSecret && !isVisible ? 'blur-sm select-none' : ''}`}>
-                {isSecret && !isVisible ? '••••••••' : value}
-              </span>
-              {isSecret && (
-                <button 
-                  onClick={() => setVisibleFields(prev => ({...prev, [fieldKey!]: !prev[fieldKey!]}))}
-                  className="text-gray-500 hover:text-[#4CAF50] p-1"
-                >
-                  {isVisible ? <Icons.EyeOff size={14}/> : <Icons.Eye size={14}/>}
-                </button>
-              )}
+              <span className={`text-[15px] font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'} ${isSecret && !isVisible ? 'blur-sm select-none' : ''}`}>{isSecret && !isVisible ? '••••••••' : value}</span>
+              {isSecret && <button onClick={() => setVisibleFields(prev => ({...prev, [fieldKey!]: !prev[fieldKey!]}))} className="text-gray-500 hover:text-[#4CAF50] p-1">{isVisible ? <Icons.EyeOff size={14}/> : <Icons.Eye size={14}/>}</button>}
             </div>
           </div>
           {!hideCopy && <button onClick={() => copy(value)} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={16}/></button>}
@@ -1662,143 +1650,12 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
     );
   };
 
-  const renderViewOnly = () => {
-    return (
-      <div className="max-w-md mx-auto space-y-4 animate-in fade-in duration-300 pb-24">
-        <div className={`rounded-3xl border overflow-hidden shadow-lg ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200'}`}>
-          {localData.type === 'login' && (
-            <>
-              {renderViewRow(t.title, localData.title, false, undefined, true)}
-              {renderViewRow(t.groupLabel, localData.group, false, undefined, true)}
-              {renderViewRow(t.subGroupLabel, localData.subGroup, false, undefined, true)}
-              {renderViewRow(t.username, localData.username)}
-              {renderViewRow(t.password, localData.password, true, 'password')}
-              {renderViewRow(t.pinCode, localData.pin, true, 'pin')}
-              {renderViewRow(t.authCode, localData.authCode)}
-              {renderViewRow(t.recoveryInfo, localData.recoveryInfo, true, 'recoveryInfo')}
-              {renderViewRow(t.url, localData.url)}
-              {renderViewRow(t.expiryInterval, t[localData.expiryInterval as keyof typeof t] || localData.expiryInterval, false, undefined, true)}
-              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
-            </>
-          )}
-
-          {localData.type === 'card' && (
-            <>
-              {renderViewRow(t.title, localData.title, false, undefined, true)}
-              {!isWallet ? (
-                <>
-                  {renderViewRow(t.cardNumber, localData.cardNumber)}
-                  {renderViewRow(t.cardName, localData.cardHolder)}
-                  {renderViewRow(t.cardType, localData.cardType, false, undefined, true)}
-                  {renderViewRow(t.expiryMonth, localData.expiryMonth, false, undefined, true)}
-                  {renderViewRow(t.atmPin, localData.atmPin, true, 'atmPin')}
-                  {renderViewRow(t.cvv, localData.cvv, true, 'cvv')}
-                </>
-              ) : (
-                <>
-                  {renderViewRow(t.phone, localData.phone)}
-                  {renderViewRow(t.password, localData.password, true, 'password')}
-                  {renderViewRow(t.pinCode, localData.pin, true, 'pin')}
-                  {renderViewRow(t.linkedBank, localData.linkedBank, false, undefined, true)}
-                </>
-              )}
-              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
-            </>
-          )}
-
-          {localData.type === 'contact' && (
-            <>
-              {renderViewRow(t.nickname, localData.nickname, false, undefined, true)}
-              {renderViewRow(t.fullName, localData.fullName)}
-              {renderViewRow(t.phone, localData.phone)}
-              {renderViewRow(t.email, localData.email)}
-              {renderViewRow(t.postCode, localData.postCode)}
-              {renderViewRow(t.address, localData.address)}
-              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
-            </>
-          )}
-
-          {localData.type === 'document' && (
-            <>
-              {renderViewRow(t.docType, t[localData.documentType as keyof typeof t] || localData.documentType, false, undefined, true)}
-              {renderViewRow(t.idNumber, localData.idNumber)}
-              {renderViewRow(t.fullName, localData.fullName)}
-              {renderViewRow(t.dob, localData.dob)}
-              {renderViewRow(t.gender, localData.gender)}
-              {renderViewRow(t.hometown, localData.hometown)}
-              {renderViewRow(t.residence, localData.residence)}
-              {renderViewRow(t.expiryDate, localData.expiryDate)}
-              {renderViewRow(t.recognition, localData.recognition)}
-              {renderViewRow(t.hospital, localData.hospital)}
-              {renderViewRow(t.nationality, localData.nationality)}
-              {renderViewRow(t.class, localData.class)}
-              {renderViewRow(t.issuer, localData.issuer)}
-              {renderViewRow(t.issueDate, localData.issueDate)}
-              {renderViewRow(t.notes, localData.notes, false, undefined, true)}
-            </>
-          )}
-        </div>
-
-        {localData.qrImage && (
-          <div className={`p-4 rounded-3xl border shadow-lg ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <span className={`text-[10px] font-black uppercase tracking-widest block ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>
-                {isWallet ? t.rechargeQr : t.qrImage}
-              </span>
-              <button onClick={() => shareData(isWallet ? t.rechargeQr : t.qrImage, "Shared QR Code", localData.qrImage)} className="text-[#4CAF50] p-1.5 bg-[#4CAF50]/10 rounded-xl">
-                <Icons.Share2 size={16}/>
-              </button>
-            </div>
-            <div className="bg-white p-4 rounded-2xl flex items-center justify-center">
-               <img src={localData.qrImage} alt="QR" className="w-full h-48 object-contain" />
-            </div>
-          </div>
-        )}
-
-        {(localData.frontImage || localData.backImage) && localData.type === 'document' && (
-          <div className="space-y-4">
-             {localData.frontImage && (
-               <div className={`p-4 rounded-3xl border shadow-lg ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200'}`}>
-                <span className={`text-[10px] font-black uppercase tracking-widest block mb-4 ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.frontImageBtn}</span>
-                <img src={localData.frontImage} alt="Front" className="w-full rounded-2xl object-cover aspect-[1.6/1]" />
-               </div>
-             )}
-             {localData.backImage && (
-               <div className={`p-4 rounded-3xl border shadow-lg ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200'}`}>
-                <span className={`text-[10px] font-black uppercase tracking-widest block mb-4 ${isDark ? 'text-gray-700' : 'text-gray-400'}`}>{t.backImageBtn}</span>
-                <img src={localData.backImage} alt="Back" className="w-full rounded-2xl object-cover aspect-[1.6/1]" />
-               </div>
-             )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const contactDataForQR = JSON.stringify({ name: localData.fullName || localData.nickname, phone: localData.phone, email: localData.email, addr: localData.address });
-
-  const getDetailTitle = () => {
-    if (!isView) return typeLabels[localData.type];
-    if (localData.type === 'login') return t.detailLogin;
-    if (localData.type === 'card') return t.detailCard;
-    if (localData.type === 'contact') return t.detailContact;
-    if (localData.type === 'document') {
-      if (localData.documentType === 'id_card' || localData.documentType === 'residence_card') return "Chi tiết Thẻ Căn cước";
-      if (localData.documentType === 'health_insurance') return "Chi tiết Thẻ BHYT";
-      if (localData.documentType === 'driving_license') return "Chi tiết Giấy phép lái xe";
-      if (localData.documentType === 'passport') return "Chi tiết Hộ chiếu";
-      return t.detailDoc;
-    }
-    return t.detailedInfo;
-  };
-
   return (
     <div className={`fixed inset-0 z-[100] flex flex-col animate-in slide-in-from-bottom-5 transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d]' : 'bg-[#f5f5f5]'}`}>
       <header className={`h-16 border-b flex items-center px-4 justify-between transition-colors duration-500 sticky top-0 z-[110] ${isDark ? 'bg-[#111]/95 border-white/5' : 'bg-white/95 border-black/5 shadow-sm'}`}>
         <button onClick={onClose} className="p-2 text-gray-500 hover:text-[#4CAF50]"><Icons.ChevronLeft size={24} /></button>
-        <h2 className={`text-[11px] font-black uppercase tracking-widest text-center px-2 flex-1 truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {getDetailTitle()}
-        </h2>
+        {/* Fix: Added missing arguments to getDetailTitle call. */}
+        <h2 className={`text-[11px] font-black uppercase tracking-widest text-center px-2 flex-1 truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{getDetailTitle(t, entry, localData, isView, typeLabels)}</h2>
         <div className="w-10"/>
       </header>
       <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-24">
@@ -1806,183 +1663,64 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           <div className="max-w-md mx-auto space-y-5">
             {localData.type === 'login' && (
               <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.title}*</label>
-                  <input value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white placeholder-gray-800' : 'bg-white border-gray-200 text-gray-900 shadow-sm placeholder-gray-400'}`} placeholder={t.loginTitleHint} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.groupLabel}</label>
-                  <select value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}>
-                    <option value="---">---</option>
-                    {settings.folders.map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                </div>
-                {currentSubFolders.length > 0 && (
-                  <div className="space-y-1.5">
-                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.subGroupLabel}</label>
-                    <select value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}>
-                      <option value="">{t.chooseSubGroup}</option>
-                      {currentSubFolders.map((s: string) => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                <div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.title}*</label><input value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white placeholder-gray-800' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`} placeholder={t.loginTitleHint} /></div>
+                <div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.groupLabel}</label><select value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
+                {copyableField(t.username, 'username', localData.username || "", "text", t.usernameHint)}
+                <div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.password}</label><input type="password" value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/></div>
+                <button type="button" onClick={() => setAdvancedOpen(!advancedOpen)} className="flex items-center gap-2 text-[11px] font-black text-[#4CAF50] uppercase tracking-widest px-1 py-2">{advancedOpen ? <Icons.ChevronDown size={14}/> : <Icons.ChevronRight size={14}/>} {t.advancedOptions}</button>
+                {advancedOpen && (
+                  <div className="mt-4 space-y-5 animate-in slide-in-from-top-2">
+                    {copyableField(t.pinCode, 'pin', localData.pin || "", "password")}{copyableField(t.authCode, 'authCode', localData.authCode || "", "password")}{copyableField(t.recoveryInfo, 'recoveryInfo', localData.recoveryInfo || "", "password")}{copyableField(t.url, 'url', localData.url || "", "text", t.urlHint)}
                   </div>
                 )}
-                {copyableField(t.username, 'username', localData.username || "", "text", t.usernameHint)}
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.password}</label>
-                  <input type="password" value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/>
-                </div>
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.expiryInterval}</label>
-                  <select value={localData.expiryInterval} onChange={e => setLocalData({...localData, expiryInterval: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}>
-                    <option value="1d">{t.day}</option>
-                    <option value="1m">{t.month}</option>
-                    <option value="6m">{t.sixMonths}</option>
-                    <option value="1y">{t.year}</option>
-                  </select>
-                </div>
-                <div className="pt-2">
-                  <button type="button" onClick={() => setAdvancedOpen(!advancedOpen)} className="flex items-center gap-2 text-[11px] font-black text-[#4CAF50] uppercase tracking-widest px-1 py-2">{advancedOpen ? <Icons.ChevronDown size={14}/> : <Icons.ChevronRight size={14}/>} {t.advancedOptions}</button>
-                  {advancedOpen && (
-                    <div className="mt-4 space-y-5 animate-in slide-in-from-top-2">
-                      {copyableField(t.pinCode, 'pin', localData.pin || "", "password")}
-                      {copyableField(t.authCode, 'authCode', localData.authCode || "", "password")}
-                      {copyableField(t.recoveryInfo, 'recoveryInfo', localData.recoveryInfo || "", "password")}
-                      <div className="space-y-1.5">
-                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.url}</label>
-                        <div className="relative">
-                          <input value={localData.url} onChange={e => setLocalData({...localData, url: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`} placeholder={t.urlHint} />
-                          {localData.url && <a href={localData.url} target="_blank" rel="noopener noreferrer" className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4CAF50] p-1.5"><Icons.ExternalLink size={18}/></a>}
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.notes}</label>
-                        <textarea rows={4} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] font-medium resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`} />
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
-
             {localData.type === 'card' && (
               <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.title}</label>
-                  <select value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200 shadow-sm'} ${!localData.title ? 'text-gray-400 opacity-60' : (isDark ? 'text-white' : 'text-gray-900')}`}>
-                    <option value="">{t.chooseBank}</option>
-                    {bankSubfolders.map((b: string) => <option key={b} value={b}>{b}</option>)}
-                    <option value="Khác">Khác</option>
-                  </select>
-                </div>
-
+                <div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.title}</label><select value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200 shadow-sm'} ${!localData.title ? 'text-gray-400 opacity-60' : (isDark ? 'text-white' : 'text-gray-900')}`}><option value="">{t.chooseBank}</option>{bankSubfolders.map((b: string) => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>
                 {!isWallet ? (
-                  <>
-                    {copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "text", "0000 0000 0000 0000")}
-                    {copyableField(t.cardName, 'cardHolder', localData.cardHolder || "", "text", "NGUYEN VAN A")}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.cardType}</label>
-                        <select value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200 shadow-sm'} ${!localData.cardType ? 'text-gray-400 opacity-60' : (isDark ? 'text-white' : 'text-gray-900')}`}>
-                          <option value="">{t.chooseCardType}</option>
-                          <option value="ATM">ATM</option>
-                          <option value="Visa">Visa</option>
-                          <option value="Debit">Debit</option>
-                          <option value="Master">Master</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.expiryMonth}</label>
-                        <input value={localData.expiryMonth} onChange={e => setLocalData({...localData, expiryMonth: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all text-center ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`} placeholder="MM/YY" />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.atmPin}</label>
-                      <input type="password" value={localData.atmPin} onChange={e => setLocalData({...localData, atmPin: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/>
-                    </div>
-                  </>
+                  <><div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.cardType}</label><select value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200 shadow-sm'} ${!localData.cardType ? 'text-gray-400 opacity-60' : (isDark ? 'text-white' : 'text-gray-900')}`}><option value="">{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>{copyableField(t.expiryMonth, 'expiryMonth', localData.expiryMonth || "", "text", "MM/YY")}</div>{copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "text", "0000 0000 0000 0000")}{copyableField(t.cardName, 'cardHolder', localData.cardHolder || "", "text", "NGUYEN VAN A")}<div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.atmPin}</label><input type="password" value={localData.atmPin} onChange={e => setLocalData({...localData, atmPin: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/></div></>
                 ) : (
-                  <>
-                    {copyableField(t.phone, 'phone', localData.phone || "", "number", "09xxxxxxxx")}
-                    <div className="space-y-1.5">
-                      <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.password}</label>
-                      <input type="password" value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.pinCode}</label>
-                      <input type="password" value={localData.pin} onChange={e => setLocalData({...localData, pin: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.linkedBank}</label>
-                      <select value={localData.linkedBank} onChange={e => setLocalData({...localData, linkedBank: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}>
-                        <option value="">-- {t.linkedBank} --</option>
-                        {bankSubfolders.map((b: string) => <option key={b} value={b}>{b}</option>)}
-                      </select>
-                    </div>
-                  </>
+                  <>{copyableField(t.phone, 'phone', localData.phone || "", "number", "09xxxxxxxx")}<div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.password}</label><input type="password" value={localData.password} onChange={e => setLocalData({...localData, password: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/></div></>
                 )}
-                {renderDocImageRow('qrImage', isWallet ? t.rechargeQr : t.qrImage)}
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.notes}</label>
-                  <textarea rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] font-medium resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`} />
-                </div>
+                <div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.notes}</label><textarea rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] font-medium resize-none outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`} /></div>
               </div>
             )}
-
-            {localData.type === 'contact' && (
-              <div className="space-y-5">
-                {copyableField(t.nickname, 'nickname', localData.nickname || "", "text", "Anh Long")}
-                {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Nguyễn Văn A")}
-                {copyableField(t.phone, 'phone', localData.phone || "", "text", "0964xxxxxx")}
-                {copyableField(t.email, 'email', localData.email || "", "text", "example@gmail.com")}
-                {copyableField(t.postCode, 'postCode', localData.postCode || "", "text", "100000")}
-                {copyableField(t.address, 'address', localData.address || "", "text", "Hà Tĩnh")}
-                <button type="button" onClick={() => setShowContactQR(!showContactQR)} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Icons.Share2 size={16} /> {t.createQRCode}</button>
-                {showContactQR && (
-                  <div className="flex flex-col items-center p-6 bg-white rounded-[2.5rem] animate-in zoom-in-95 shadow-xl">
-                    <QRCodeSVG value={contactDataForQR} size={200} />
-                    <p className="text-gray-400 text-[10px] mt-4 font-bold uppercase tracking-widest">{t.scanMe}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
             {localData.type === 'document' && (
               <div className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.docType}</label>
-                  <select value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}>
-                    <option value="">{t.chooseDocType}</option>
-                    <option value="id_card">{t.idCard}</option>
-                    <option value="health_insurance">{t.healthInsurance}</option>
-                    <option value="driving_license">{t.drivingLicense}</option>
-                    <option value="passport">{t.passport}</option>
-                  </select>
-                </div>
-                <div className={`h-px w-full my-2 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`} />
-                {renderDocumentFields()}
-                <div className="space-y-1.5 pt-2">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.notes}</label>
-                  <textarea rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] font-medium resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`} />
-                </div>
+                <div className="space-y-1.5"><label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.docType}</label><select value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}><option value="">{t.chooseDocType}</option><option value="id_card">{t.idCard}</option><option value="health_insurance">{t.healthInsurance}</option><option value="driving_license">{t.drivingLicense}</option><option value="passport">{t.passport}</option></select></div>
+                <div className={`h-px w-full my-2 ${isDark ? 'bg-white/5' : 'bg-gray-100'}`} />{renderDocumentFields()}
               </div>
+            )}
+            {localData.type === 'contact' && (
+              <div className="space-y-5">{copyableField(t.nickname, 'nickname', localData.nickname || "", "text", "Nickname")}{copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên")}{copyableField(t.phone, 'phone', localData.phone || "", "text", "SĐT")}{copyableField(t.address, 'address', localData.address || "", "text", "Địa chỉ")}</div>
             )}
           </div>
         )}
       </main>
-      
       {!isView && (
         <div className={`sticky bottom-0 left-0 right-0 p-4 border-t transition-colors duration-500 z-[120] ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]'}`}>
-          <button 
-            onClick={() => onSave(localData)} 
-            className="w-full max-w-md mx-auto block bg-[#4CAF50] text-white py-4 rounded-3xl text-[12px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#4CAF50]/30 active:scale-95 transition-all"
-          >
-            {t.save}
-          </button>
+          <button onClick={() => onSave(localData)} className="w-full max-w-md mx-auto block bg-[#4CAF50] text-white py-4 rounded-3xl text-[12px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#4CAF50]/30 active:scale-95 transition-all">{t.save}</button>
         </div>
       )}
     </div>
   );
 };
+
+// Fix: Changed getDetailTitle to function declaration for hoisting and clarity.
+function getDetailTitle(t: any, entry: any, localData: any, isView: boolean, typeLabels: any) {
+  if (!isView) return typeLabels[localData.type];
+  if (localData.type === 'login') return t.detailLogin;
+  if (localData.type === 'card') return t.detailCard;
+  if (localData.type === 'contact') return t.detailContact;
+  if (localData.type === 'document') {
+    if (localData.documentType === 'id_card') return "Thẻ Căn cước";
+    if (localData.documentType === 'health_insurance') return "Thẻ BHYT";
+    if (localData.documentType === 'driving_license') return "Giấy phép lái xe";
+    return t.detailDoc;
+  }
+  return t.detailedInfo;
+}
 
 const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast, onAddEntry }: any) => {
   const [showQR, setShowQR] = useState(false);
@@ -1990,15 +1728,35 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
   const [wifiSsid, setWifiSsid] = useState('');
   const [wifiSecurity, setWifiSecurity] = useState('WPA');
   const [wifiPassword, setWifiPassword] = useState('');
-  const [showWifiPass, setShowWifiPass] = useState(false);
   const [shareText, setShareText] = useState('');
   const [showShareQR, setShowShareQR] = useState(false);
 
   const wifiValue = useMemo(() => {
-    if (wifiSecurity === 'RAW') return wifiPassword;
     if (wifiSecurity === 'NONE') return `WIFI:S:${wifiSsid};T:nopass;;`;
     return `WIFI:S:${wifiSsid};T:${wifiSecurity};P:${wifiPassword};;`;
   }, [wifiSsid, wifiSecurity, wifiPassword]);
+
+  // Fix: Added local copyableField helper for GeneratorScreen.
+  const copyableField = (label: string, field: string, value: string, type: string = "text", placeholder: string = "") => (
+    <div className="space-y-1.5 w-full">
+      <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{label}</label>
+      <div className="relative w-full">
+        <input 
+          type={type} 
+          value={value} 
+          onChange={e => {
+            if (field === 'wifiSsid') setWifiSsid(e.target.value);
+            if (field === 'wifiPassword') setWifiPassword(e.target.value);
+          }} 
+          className={`w-full border rounded-2xl py-3.5 pl-4 pr-12 text-[15px] font-medium focus:border-[#4CAF50]/60 outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white placeholder-gray-800' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 shadow-sm'}`}
+          placeholder={placeholder}
+        />
+        <button type="button" onClick={() => copy(value)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#4CAF50] transition-colors p-1">
+          <Icons.Copy size={16}/>
+        </button>
+      </div>
+    </div>
+  );
 
   const handleDownload = () => {
     const canvas = document.querySelector('.qr-canvas-target canvas') as HTMLCanvasElement;
@@ -2013,13 +1771,11 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
   const handleSaveToVault = () => {
     const canvas = document.querySelector('.qr-canvas-target canvas') as HTMLCanvasElement;
     if (!canvas) return;
-    const qrBase64 = canvas.toDataURL('image/png');
-    
     onAddEntry({
       type: 'login',
       title: `QR Wifi: ${wifiSsid || 'Unknown'}`,
       group: 'Mạng Internet',
-      qrImage: qrBase64,
+      qrImage: canvas.toDataURL('image/png'),
       notes: t.wifiHint,
       password: wifiPassword,
       username: wifiSsid
@@ -2027,180 +1783,41 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
     setToast(t.success);
   };
 
-  const handleShare = async () => {
-    const canvas = document.querySelector('.qr-canvas-target canvas') as HTMLCanvasElement;
-    if (!canvas) return;
-    const base64 = canvas.toDataURL('image/png');
-    if (genMode === 'wifi') {
-      await shareData(`WiFi: ${wifiSsid}`, t.wifiHint, base64);
-    } else if (genMode === 'share') {
-      await shareData('SecurePass QR Share', shareText, base64);
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-6 justify-between backdrop-blur-xl transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
         <h2 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.generatorTab}</h2>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setShowGenHistory(!showGenHistory)} className={`p-2 transition-all ${showGenHistory ? 'text-[#4CAF50]' : 'text-gray-500 hover:opacity-100'}`}><Icons.History size={22} /></button>
-        </div>
+        <button onClick={() => setShowGenHistory(!showGenHistory)} className={`p-2 ${showGenHistory ? 'text-[#4CAF50]' : 'text-gray-500'}`}><Icons.History size={22} /></button>
       </header>
-      <div className={`p-2 flex gap-1 border-b transition-colors duration-500 ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
-        <button onClick={() => setGenMode('password')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${genMode === 'password' ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t.genModePassword}</button>
-        <button onClick={() => setGenMode('wifi')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${genMode === 'wifi' ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t.genModeWifi}</button>
-        <button onClick={() => setGenMode('share')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${genMode === 'share' ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t.genModeShare}</button>
+      <div className={`p-2 flex gap-1 border-b ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
+        {['password', 'wifi', 'share'].map((m: any) => (<button key={m} onClick={() => setGenMode(m)} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${genMode === m ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t[`genMode${m.charAt(0).toUpperCase() + m.slice(1)}` as keyof typeof t]}</button>))}
       </div>
-      <main className="flex-1 flex overflow-hidden">
-        {showGenHistory && genMode === 'password' && (
-          <aside className={`w-64 border-r overflow-y-auto p-4 hidden md:block animate-in slide-in-from-left-5 transition-colors duration-500 ${isDark ? 'border-white/5 bg-[#111]/50' : 'border-black/5 bg-white/50'}`}>
-            <h3 className={`text-[10px] font-black uppercase tracking-widest mb-4 px-2 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.genHistory}</h3>
-            <div className="space-y-1.5">
-              {genHistory.map((p: string, idx: number) => (
-                <button key={idx} onClick={() => copy(p)} className={`w-full flex items-center justify-between p-3 rounded-xl hover:bg-[#4CAF50]/10 transition-all text-left group ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}><span className="font-mono text-[10px] text-[#4CAF50] truncate pr-2">{p}</span><Icons.Copy size={12} className="text-gray-600 group-hover:text-[#4CAF50]"/></button>
-              ))}
-            </div>
-          </aside>
-        )}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
-          {genMode === 'password' && (
-            <div className="space-y-6">
-              <div className="space-y-4 text-center">
-                <input readOnly value={genPass} className={`w-full border rounded-3xl p-6 text-center text-xl font-mono text-[#4CAF50] tracking-wider outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5' : 'bg-white border-gray-200'}`} />
-                {showQR && genPass && <div className="bg-white p-6 rounded-3xl inline-block mx-auto mb-4 animate-in zoom-in-95"><QRCodeSVG value={genPass} size={180} /></div>}
-                <div className="space-y-3">
-                  <div className="flex gap-3">
-                    <button onClick={() => copy(genPass)} className={`flex-1 font-bold flex items-center justify-center gap-2 border active:scale-95 transition-all py-4 rounded-3xl ${isDark ? 'bg-white/5 text-white border-white/5' : 'bg-white text-gray-700 border-gray-200 shadow-sm'}`}><Icons.Copy size={18} /> {t.copyPassword}</button>
-                    <button onClick={handleGenerator} className="bg-[#4CAF50] text-white p-4 rounded-3xl active:scale-95 transition-all shadow-lg shadow-[#4CAF50]/20"><Icons.RefreshCw size={24} /></button>
-                  </div>
-                  <button onClick={() => setShowQR(!showQR)} className={`w-full font-bold flex items-center justify-center gap-2 border active:scale-95 transition-all py-4 rounded-3xl ${showQR ? 'bg-[#4CAF50] text-white border-[#4CAF50]' : (isDark ? 'bg-white/5 text-white border-white/5' : 'bg-white text-gray-700 border-gray-200 shadow-sm')}`}><Icons.Camera size={18} /> {t.createQRCode}</button>
-                </div>
-              </div>
-              <div className={`rounded-[2.5rem] border p-6 space-y-4 max-w-lg mx-auto shadow-lg transition-colors duration-500 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
-                <div className="flex justify-between items-center"><label className="text-xs font-bold text-gray-500">{t.genLength}</label><span className="font-bold text-[#4CAF50]">{genConfig.length}</span></div>
-                <input type="range" min="4" max="64" value={genConfig.length} onChange={e => setGenConfig({...genConfig, length: parseInt(e.target.value)})} className="w-full accent-[#4CAF50]" />
-                {[{ id: 'useAZ', label: t.genAZ }, { id: 'useaz', label: t.genaz }, { id: 'use09', label: t.gen09 }, { id: 'useSpec', label: t.genSpec }].map(opt => (
-                  <div key={opt.id} className="flex items-center justify-between">
-                    <span className={`text-xs ${isDark ? 'text-white' : 'text-gray-800'}`}>{opt.label}</span>
-                    <button onClick={() => setGenConfig({...genConfig, [opt.id]: !(genConfig as any)[opt.id]})} className={`w-12 h-6 rounded-full relative transition-all ${ (genConfig as any)[opt.id] ? 'bg-[#4CAF50]' : 'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${(genConfig as any)[opt.id] ? 'right-1' : 'left-1'}`} /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {genMode === 'wifi' && (
-            <div className="space-y-6 max-w-lg mx-auto">
-              <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl space-y-4 qr-canvas-target">
-                 <QRCodeCanvas value={wifiValue} size={220} includeMargin={true} level="H" />
-                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">{wifiSsid || 'WiFi Name'}</p>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.wifiSsid}</label>
-                  <input value={wifiSsid} onChange={e => setWifiSsid(e.target.value)} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium focus:border-[#4CAF50]/60 outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white placeholder-gray-800' : 'bg-white border-gray-200 text-gray-900 shadow-sm placeholder-gray-400'}`} placeholder="WiFi Name" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.wifiSecurity}</label>
-                  <select value={wifiSecurity} onChange={e => setWifiSecurity(e.target.value)} className={`w-full border rounded-2xl py-3.5 px-4 text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}>
-                    <option value="WPA">WPA/WPA2</option>
-                    <option value="WPA3">WPA3</option>
-                    <option value="WEP">WEP</option>
-                    <option value="NONE">NONE</option>
-                    <option value="RAW">RAW (Text Only)</option>
-                  </select>
-                </div>
-                {wifiSecurity !== 'NONE' && (
-                  <div className="space-y-1.5">
-                    <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.wifiPassword}</label>
-                    <div className="relative">
-                      <input type={showWifiPass ? "text" : "password"} value={wifiPassword} onChange={e => setWifiPassword(e.target.value)} className={`w-full border rounded-2xl py-3.5 px-4 font-mono text-[15px] font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}/>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-500">
-                        <button type="button" onClick={() => setShowWifiPass(!showWifiPass)} className="p-1.5">{showWifiPass ? <Icons.EyeOff size={18}/> : <Icons.Eye size={18}/>}</button>
-                        <button type="button" onClick={() => copy(wifiPassword)} className="p-1.5"><Icons.Copy size={18}/></button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3 pt-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={handleDownload} className="bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"><Icons.Download size={18} /> {t.downloadQr}</button>
-                  <button onClick={handleSaveToVault} className={`py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-[#4CAF50]' : 'bg-white border-gray-200 text-[#4CAF50] shadow-sm'}`}><Icons.Save size={18} /> {t.saveToVault}</button>
-                </div>
-                <button onClick={handleShare} className={`w-full py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}><Icons.Share2 size={18} /> {t.shareQr}</button>
-              </div>
-            </div>
-          )}
-
-          {genMode === 'share' && (
-            <div className="space-y-6 max-w-lg mx-auto">
-              <div className="flex items-start gap-3 px-1">
-                <Icons.Lightbulb className="text-[#4CAF50] shrink-0" size={18} />
-                <p className={`text-[13px] leading-relaxed font-normal italic ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {t.shareQrInstruction}
-                </p>
-              </div>
-              
-              <div className="space-y-1.5">
-                <label className={`text-[10px] font-black uppercase tracking-widest ml-1 block ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>{t.content}</label>
-                <div className="relative">
-                  <textarea 
-                    rows={5}
-                    value={shareText} 
-                    onChange={e => { setShareText(e.target.value); setShowShareQR(false); }} 
-                    className={`w-full border rounded-[2rem] p-5 text-[15px] font-medium resize-none outline-none focus:border-[#4CAF50]/60 transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white placeholder-gray-800' : 'bg-white border-gray-200 text-gray-900 shadow-sm placeholder-gray-400'}`} 
-                    placeholder={t.shareQrPlaceholder}
-                  />
-                  <button type="button" onClick={() => copy(shareText)} className="absolute right-4 bottom-4 text-gray-500 hover:text-[#4CAF50] p-2 bg-black/5 rounded-xl">
-                    <Icons.Copy size={18}/>
-                  </button>
-                </div>
-              </div>
-
-              {showShareQR && shareText && (
-                <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl space-y-4 qr-canvas-target animate-in zoom-in-95">
-                  <QRCodeCanvas value={shareText} size={200} includeMargin={true} level="H" />
-                  <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest truncate max-w-full px-4">{shareText.substring(0, 30)}...</p>
-                </div>
-              )}
-
-              <div className="space-y-3 pt-4">
-                <button 
-                  onClick={() => setShowShareQR(true)} 
-                  disabled={!shareText}
-                  className={`w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-30`}
-                >
-                  <Icons.Camera size={18} /> {t.createQRCode}
-                </button>
-                
-                {showShareQR && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button onClick={handleDownload} className={`py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}>
-                      <Icons.Download size={18} /> {t.downloadQr}
-                    </button>
-                    <button onClick={handleShare} className={`py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest border flex items-center justify-center gap-2 active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-700 shadow-sm'}`}>
-                      <Icons.Share2 size={18} /> {t.shareQr}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
-      {showGenHistory && genMode === 'password' && (
-        <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6" onClick={() => setShowGenHistory(false)}>
-          <div className={`w-full max-sm rounded-[2.5rem] p-6 border shadow-2xl scale-in-center transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`} onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6 px-1"><h3 className={`font-black uppercase text-[11px] tracking-widest ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.genHistory}</h3><button onClick={() => setShowGenHistory(false)}><Icons.X size={22} className="text-gray-500 hover:text-[#4CAF50]"/></button></div>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-              {genHistory.map((p: string, idx: number) => (
-                <div key={idx} className={`flex items-center justify-between p-4 rounded-2xl transition-all ${isDark ? 'bg-white/5' : 'bg-gray-50 shadow-sm'}`}><span className="font-mono text-xs text-[#4CAF50] truncate pr-4">{p}</span><button onClick={() => copy(p)} className="text-gray-500 hover:text-[#4CAF50] transition-all p-1"><Icons.Copy size={16} /></button></div>
-              ))}
+      <main className="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
+        {genMode === 'password' && (
+          <div className="space-y-6 max-w-lg mx-auto">
+            <input readOnly value={genPass} className={`w-full border rounded-3xl p-6 text-center text-xl font-mono text-[#4CAF50] outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5' : 'bg-white border-gray-200'}`} />
+            <div className="flex gap-3"><button onClick={() => copy(genPass)} className={`flex-1 font-bold py-4 rounded-3xl flex items-center justify-center gap-2 border ${isDark ? 'bg-white/5 text-white border-white/5' : 'bg-white text-gray-700 border-gray-200 shadow-sm'}`}><Icons.Copy size={18}/> {t.copyPassword}</button><button onClick={handleGenerator} className="bg-[#4CAF50] text-white p-4 rounded-3xl"><Icons.RefreshCw size={24}/></button></div>
+            <div className={`rounded-[2.5rem] border p-6 space-y-4 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
+               <div className="flex justify-between items-center"><label className="text-xs font-bold text-gray-500">{t.genLength}</label><span className="font-bold text-[#4CAF50]">{genConfig.length}</span></div>
+               <input type="range" min="4" max="64" value={genConfig.length} onChange={e => setGenConfig({...genConfig, length: parseInt(e.target.value)})} className="w-full accent-[#4CAF50]" />
             </div>
           </div>
-        </div>
-      )}
+        )}
+        {genMode === 'wifi' && (
+          <div className="space-y-6 max-w-lg mx-auto">
+            <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl qr-canvas-target"><QRCodeCanvas value={wifiValue} size={200} includeMargin level="H" /><p className="text-gray-400 text-[10px] font-bold uppercase mt-4">{wifiSsid || 'WiFi Name'}</p></div>
+            <div className="space-y-4">{copyableField(t.wifiSsid, 'wifiSsid', wifiSsid, "text", "WiFi Name")}{copyableField(t.wifiPassword, 'wifiPassword', wifiPassword, "password")}</div>
+            <div className="grid grid-cols-2 gap-3"><button onClick={handleDownload} className="bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase shadow-lg flex items-center justify-center gap-2"><Icons.Download size={18}/> {t.downloadQr}</button><button onClick={handleSaveToVault} className={`py-4 rounded-3xl font-bold text-[11px] uppercase border flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 text-[#4CAF50]' : 'bg-white border-gray-200 text-[#4CAF50]'}`}><Icons.Save size={18}/> {t.saveToVault}</button></div>
+          </div>
+        )}
+        {genMode === 'share' && (
+          <div className="space-y-6 max-w-lg mx-auto">
+            <textarea rows={5} value={shareText} onChange={e => { setShareText(e.target.value); setShowShareQR(false); }} className={`w-full border rounded-[2rem] p-5 text-[15px] resize-none outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 shadow-sm'}`} placeholder={t.shareQrPlaceholder} />
+            <button onClick={() => setShowShareQR(true)} disabled={!shareText} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase shadow-lg disabled:opacity-30 flex items-center justify-center gap-2"><Icons.Camera size={18}/> {t.createQRCode}</button>
+            {showShareQR && <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl qr-canvas-target animate-in zoom-in-95"><QRCodeCanvas value={shareText} size={180} includeMargin level="H" /></div>}
+          </div>
+        )}
+      </main>
     </div>
   );
 };
