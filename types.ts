@@ -13,6 +13,9 @@ export interface PasswordEntry {
   password?: string;
   pin?: string;
   authCode?: string;
+  msAuthCode?: string; // New field for Microsoft Authenticator
+  googleAuthQr?: string; // New field for Google Auth QR image
+  msAuthQr?: string; // New field for Microsoft Auth QR image
   recoveryInfo?: string;
   url?: string;
   notes?: string;
