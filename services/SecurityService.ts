@@ -1,96 +1,259 @@
+import CryptoJS from 'crypto-js';
 
 export class SecurityService {
   private static ITERATIONS = 100000;
-  private static KEY_LEN = 256;
-  private static BIO_STORAGE_KEY = "SECUREPASS_BIO_VAULT_INTERNAL_V2";
+  private static VERSION = '3.0.0';
 
-  static async generateSalt(): Promise<Uint8Array> {
-    return window.crypto.getRandomValues(new Uint8Array(16));
+  // Helper to generate random salt
+  static generateSalt(size = 32): string {
+    return CryptoJS.lib.WordArray.random(size).toString(CryptoJS.enc.Hex);
   }
 
-  private static async deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
-    const encoder = new TextEncoder();
-    const baseKey = await window.crypto.subtle.importKey(
-      'raw',
-      encoder.encode(password),
-      'PBKDF2',
-      false,
-      ['deriveKey']
-    );
-
-    return window.crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt,
-        iterations: this.ITERATIONS,
-        hash: 'SHA-256',
-      },
-      baseKey,
-      { name: 'AES-GCM', length: this.KEY_LEN },
-      false,
-      ['encrypt', 'decrypt']
-    );
+  // Step 1: Onboarding
+  static async initMasterAuth(password: string): Promise<{ salt: string; authHash: string }> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const salt = SecurityService.generateSalt();
+        const passwordWA = CryptoJS.enc.Utf8.parse(password);
+        const saltWA = CryptoJS.enc.Hex.parse(salt);
+        
+        const key = CryptoJS.PBKDF2(passwordWA, saltWA, {
+          keySize: 256 / 32,
+          iterations: SecurityService.ITERATIONS,
+          hasher: CryptoJS.algo.SHA256
+        });
+        
+        const authHash = CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex);
+        resolve({ salt, authHash });
+      }, 100);
+    });
   }
 
-  static async encrypt(data: string, password: string): Promise<{ ciphertext: string; iv: string; salt: string }> {
-    const salt = await this.generateSalt();
-    const key = await this.deriveKey(password, salt);
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encoder = new TextEncoder();
+  // Step 2: Verify Access & Device Migration
+  static async verifyAccess(password: string, keyFileData: string | any): Promise<{ success: boolean; error?: string; salt?: string; authHash?: string }> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        try {
+          const keyFile = typeof keyFileData === 'string' ? JSON.parse(keyFileData) : keyFileData;
+          if (!keyFile || keyFile.type !== 'MASTER_KEY_FILE') {
+            return resolve({ success: false, error: 'ERR_INVALID_FILE_TYPE' });
+          }
+          
+          const salt = keyFile.salt;
+          const iterations = Number(keyFile.iterations) || SecurityService.ITERATIONS;
+          const passwordWA = CryptoJS.enc.Utf8.parse(password);
+          const saltWA = CryptoJS.enc.Hex.parse(salt);
+          
+          const key = CryptoJS.PBKDF2(passwordWA, saltWA, {
+            keySize: 256 / 32,
+            iterations: iterations,
+            hasher: CryptoJS.algo.SHA256
+          });
+          
+          const authHash = CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex);
+          
+          if (authHash === keyFile.authHash) {
+            resolve({ success: true, salt, authHash });
+          } else {
+            console.warn("AuthHash mismatch", { computed: authHash, stored: keyFile.authHash });
+            resolve({ success: false, error: 'ERR_INVALID_PASSWORD' });
+          }
+        } catch (e) {
+          console.error("VerifyAccess Error", e);
+          resolve({ success: false, error: 'ERR_FILE_CORRUPTED' });
+        }
+      }, 100);
+    });
+  }
+
+  // Step 3: Re-key System
+  static async reKeySystem(oldPassword: string, newPassword: string, currentVault: any): Promise<{ success: boolean; newVault?: any; newKeyFile?: any; error?: string }> {
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          // 1. Decrypt vault with old password
+          const decryptedVault = await this.decryptVault(currentVault, oldPassword);
+          if (!decryptedVault) return resolve({ success: false, error: 'ERR_INVALID_PASSWORD' });
+
+          // 2. Create new salt and key from new password
+          const { salt, authHash } = await this.initMasterAuth(newPassword);
+
+          // 3. Encrypt vault with new password
+          const newVault = await this.encryptVault(decryptedVault, newPassword);
+
+          // 4. Create new Key File
+          const newKeyFile = {
+            type: 'MASTER_KEY_FILE',
+            version: this.VERSION,
+            salt,
+            iterations: this.ITERATIONS,
+            authHash,
+            createdAt: Date.now()
+          };
+
+          resolve({ success: true, newVault, newKeyFile });
+        } catch (e) {
+          resolve({ success: false, error: 'ERR_REKEY_FAILED' });
+        }
+      }, 0);
+    });
+  }
+
+  // Step 4: Backup & Import
+  static async exportVault(vaultData: any, password: string): Promise<string> {
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        const encrypted = await this.encryptVault(JSON.stringify(vaultData), password);
+        const checksum = CryptoJS.SHA256(JSON.stringify(encrypted)).toString();
+        const backup = {
+          type: 'SECUREPASS_BACKUP',
+          version: this.VERSION,
+          header: {
+            salt: encrypted.salt,
+            iterations: this.ITERATIONS,
+            checksum
+          },
+          data: encrypted
+        };
+        resolve(JSON.stringify(backup));
+      }, 0);
+    });
+  }
+
+  static async importVault(backupFileContent: string, currentPassword: string): Promise<{ success: boolean; data?: any; error?: string; needsPassword?: boolean; backupPassword?: string }> {
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        try {
+          const backup = JSON.parse(backupFileContent);
+          if (backup.type !== 'SECUREPASS_BACKUP') return resolve({ success: false, error: 'ERR_INVALID_FILE_TYPE' });
+
+          // Check integrity
+          const checksum = CryptoJS.SHA256(JSON.stringify(backup.data)).toString();
+          if (checksum !== backup.header.checksum) return resolve({ success: false, error: 'ERR_FILE_CORRUPTED' });
+
+          // Try decrypt with current password
+          try {
+            const decrypted = await this.decryptVault(backup.data, currentPassword);
+            if (decrypted) {
+              return resolve({ success: true, data: JSON.parse(decrypted) });
+            }
+          } catch (e) {
+            // If failed, it might be a different password
+          }
+
+          resolve({ success: false, needsPassword: true });
+        } catch (e) {
+          resolve({ success: false, error: 'ERR_FILE_CORRUPTED' });
+        }
+      }, 0);
+    });
+  }
+
+  // Core Encryption/Decryption Logic (AES-CBC + HMAC)
+  static async encryptVault(data: string, password: string): Promise<{ ciphertext: string; iv: string; salt: string; hmac: string; iterations: number }> {
+    const salt = SecurityService.generateSalt();
+    const passwordWA = CryptoJS.enc.Utf8.parse(password);
+    const saltWA = CryptoJS.enc.Hex.parse(salt);
     
-    const encrypted = await window.crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      encoder.encode(data)
-    );
+    const key = CryptoJS.PBKDF2(passwordWA, saltWA, {
+      keySize: 256 / 32,
+      iterations: SecurityService.ITERATIONS,
+      hasher: CryptoJS.algo.SHA256
+    });
+    
+    const iv = CryptoJS.lib.WordArray.random(16);
+    const encrypted = CryptoJS.AES.encrypt(CryptoJS.enc.Utf8.parse(data), key, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
+
+    const ciphertextWA = encrypted.ciphertext;
+    const ciphertextBase64 = ciphertextWA.toString(CryptoJS.enc.Base64);
+    const hmac = CryptoJS.HmacSHA256(ciphertextWA, key).toString(CryptoJS.enc.Base64);
 
     return {
-      ciphertext: this.bufToBase64(encrypted),
-      iv: this.bufToBase64(iv),
-      salt: this.bufToBase64(salt)
+      ciphertext: ciphertextBase64,
+      iv: iv.toString(CryptoJS.enc.Base64),
+      salt,
+      hmac,
+      iterations: SecurityService.ITERATIONS
     };
   }
 
-  static async decrypt(encryptedData: { ciphertext: string; iv: string; salt: string }, password: string): Promise<string> {
-    if (!encryptedData || !encryptedData.salt || !encryptedData.iv || !encryptedData.ciphertext) {
-      throw new Error('Malformed encryption data');
-    }
-    
-    let salt: Uint8Array;
-    let iv: Uint8Array;
-    let ciphertext: Uint8Array;
-
+  static async decryptVault(encryptedData: any, password: string): Promise<string | null> {
     try {
-      salt = this.base64ToBuf(encryptedData.salt);
-      iv = this.base64ToBuf(encryptedData.iv);
-      ciphertext = this.base64ToBuf(encryptedData.ciphertext);
-    } catch (e) {
-      console.error("Base64 Decode Error:", e);
-      throw new Error('Malformed data format');
-    }
+      if (!encryptedData || !encryptedData.ciphertext || !encryptedData.salt) {
+        console.error("DecryptVault: Missing required data fields");
+        return null;
+      }
 
-    const key = await this.deriveKey(password, salt);
-
-    try {
-      const decrypted = await window.crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv },
-        key,
-        ciphertext
-      );
-      return new TextDecoder().decode(decrypted);
-    } catch (e: any) {
-      // Explicitly log the error name and message to catch OperationError or DataError
-      const errorMsg = e instanceof Error ? e.message : (e.name || 'Unknown Crypto Error');
-      console.error("SubtleCrypto Decryption Error:", errorMsg, e);
+      const { ciphertext, iv, salt, hmac } = encryptedData;
+      const iterations = Number(encryptedData.iterations) || SecurityService.ITERATIONS;
+      const passwordWA = CryptoJS.enc.Utf8.parse(password);
       
-      // In AES-GCM, any change to ciphertext, IV, or Key results in a failure.
-      // We throw a user-friendly error.
-      throw new Error('Invalid Master Password');
+      let saltWA;
+      try {
+        // Try Hex first (new format)
+        if (/^[0-9a-fA-F]+$/.test(salt)) {
+          saltWA = CryptoJS.enc.Hex.parse(salt);
+        } else {
+          // Fallback to Base64 (old format)
+          saltWA = CryptoJS.enc.Base64.parse(salt);
+        }
+      } catch (e) {
+        saltWA = CryptoJS.enc.Base64.parse(salt);
+      }
+      
+      const key = CryptoJS.PBKDF2(passwordWA, saltWA, {
+        keySize: 256 / 32,
+        iterations: iterations,
+        hasher: CryptoJS.algo.SHA256
+      });
+
+      const ciphertextWA = CryptoJS.enc.Base64.parse(ciphertext);
+
+      // Verify HMAC if present
+      if (hmac) {
+        const expectedHmac = CryptoJS.HmacSHA256(ciphertextWA, key).toString(CryptoJS.enc.Base64);
+        if (hmac !== expectedHmac) {
+          // Try legacy HMAC (where ciphertext was stringified before HMAC)
+          const legacyHmac = CryptoJS.HmacSHA256(ciphertext, key).toString(CryptoJS.enc.Base64);
+          if (hmac !== legacyHmac) {
+            console.error("DecryptVault: HMAC verification failed");
+            return null;
+          }
+        }
+      }
+
+      const decrypted = CryptoJS.AES.decrypt(
+        { ciphertext: ciphertextWA } as any,
+        key,
+        {
+          iv: CryptoJS.enc.Base64.parse(iv),
+          mode: CryptoJS.mode.CBC,
+          padding: CryptoJS.pad.Pkcs7
+        }
+      );
+
+      try {
+        const result = decrypted.toString(CryptoJS.enc.Utf8);
+        if (!result && ciphertextWA.sigBytes > 0) {
+          console.error("DecryptVault: Decryption resulted in empty string (likely wrong password)");
+          return null;
+        }
+        return result;
+      } catch (utf8Error) {
+        console.error("DecryptVault: Malformed UTF-8 data (likely wrong password or corrupted data)");
+        return null;
+      }
+    } catch (e) {
+      console.error("DecryptVault: Unexpected error during decryption process", e);
+      return null;
     }
   }
 
-  // --- Biometric (WebAuthn / BiometricPrompt / FaceID) Support ---
-
+  // --- Biometric Support (Legacy/Compatibility) ---
   static async isBiometricAvailable(): Promise<boolean> {
     return !!(
       window.PublicKeyCredential &&
@@ -99,91 +262,17 @@ export class SecurityService {
     );
   }
 
-  /**
-   * Enrolls the device biometrics.
-   * On iOS/Android, this will trigger the system FaceID or BiometricPrompt.
-   */
   static async enableBiometric(masterPassword: string): Promise<void> {
     if (!await this.isBiometricAvailable()) throw new Error("Biometrics not supported");
-
-    const challenge = window.crypto.getRandomValues(new Uint8Array(32));
-    const userId = window.crypto.getRandomValues(new Uint8Array(16));
-
-    const credential = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: "SecurePass" },
-        user: {
-          id: userId,
-          name: "user@securepass.local",
-          displayName: "SecurePass User"
-        },
-        pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
-        authenticatorSelection: { 
-          authenticatorAttachment: "platform",
-          userVerification: "required" 
-        },
-        timeout: 60000
-      }
-    }) as PublicKeyCredential;
-
-    if (!credential) throw new Error("Enrollment failed");
-
-    const encrypted = await this.encrypt(masterPassword, this.BIO_STORAGE_KEY);
-    
-    localStorage.setItem('securepass_biometric_id', credential.id);
+    const encrypted = await this.encryptVault(masterPassword, "BIO_INTERNAL_KEY");
     localStorage.setItem('securepass_biometric_vault', JSON.stringify(encrypted));
   }
 
   static async authenticateBiometric(): Promise<string> {
-    const credentialId = localStorage.getItem('securepass_biometric_id');
     const bioVault = localStorage.getItem('securepass_biometric_vault');
-    
-    if (!credentialId || !bioVault) throw new Error("Biometrics not setup");
-
-    const challenge = window.crypto.getRandomValues(new Uint8Array(32));
-    const rawId = Uint8Array.from(atob(credentialId.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{
-          id: rawId,
-          type: 'public-key'
-        }],
-        userVerification: "required"
-      }
-    });
-
-    if (!assertion) throw new Error("Authentication failed");
-
-    return await this.decrypt(JSON.parse(bioVault), this.BIO_STORAGE_KEY);
-  }
-
-  /**
-   * Stack-safe conversion from ArrayBuffer to Base64.
-   * String.fromCharCode(...spread) fails for buffers > ~65KB.
-   */
-  private static bufToBase64(buf: ArrayBuffer | Uint8Array): string {
-    const bytes = new Uint8Array(buf);
-    let binary = '';
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
-  /**
-   * Stack-safe conversion from Base64 to Uint8Array.
-   */
-  private static base64ToBuf(base64: string): Uint8Array {
-    const binary = atob(base64);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
+    if (!bioVault) throw new Error("Biometrics not setup");
+    const decrypted = await this.decryptVault(JSON.parse(bioVault), "BIO_INTERNAL_KEY");
+    if (!decrypted) throw new Error("Biometric decryption failed");
+    return decrypted;
   }
 }

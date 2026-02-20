@@ -45,7 +45,10 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
-  Lightbulb
+  Lightbulb,
+  Loader2,
+  CircleCheck,
+  FileCheck
 } from 'lucide-react';
 
 export {
@@ -93,5 +96,8 @@ export {
   ChevronDown,
   ChevronUp,
   Star,
-  Lightbulb
+  Lightbulb,
+  Loader2,
+  CircleCheck,
+  FileCheck
 };

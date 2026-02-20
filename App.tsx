@@ -4,7 +4,6 @@ import * as Icons from './components/Icons';
 import { PasswordEntry, AppView, SettingsState, EntryType } from './types';
 import { generatePassword, calculateStrength, getStrengthColor } from './utils/passwordUtils';
 import { SecurityService } from './services/SecurityService';
-import { AdvancedSecurityService } from './services/AdvancedSecurityService';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
 
 const translations = {
@@ -152,6 +151,9 @@ const translations = {
     biometricError: 'Biometric error.',
     success: 'Success!',
     saveKeyWarning: 'Please keep your key file safe!',
+    passwordStrength: 'Password Strength',
+    saveKeyFileBtn: 'Save Key File',
+    keyFileInstruction: 'Please save this key file in a safe place. You will need it to unlock your vault on new devices.',
     detailLogin: 'Login Details',
     detailCard: 'Card Details',
     detailContact: 'Contact Details',
@@ -297,6 +299,9 @@ const translations = {
     wifiPassword: 'Mật khẩu',
     downloadQr: 'Tải xuống',
     saveToVault: 'Lưu',
+    passwordStrength: 'Độ mạnh mật khẩu',
+    saveKeyFileBtn: 'Lưu file khóa',
+    keyFileInstruction: 'Vui lòng lưu file khóa này ở nơi an toàn. Bạn sẽ cần nó để mở khóa trên các thiết bị mới.',
     shareQr: 'Chia sẻ',
     wifiHint: 'Quét để kết nối',
     chooseSubGroup: '-- Chọn nhóm con --',
@@ -515,101 +520,89 @@ const App: React.FC = () => {
     touchStartX.current = null;
   };
 
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
   const handleLogin = async (e?: React.FormEvent, providedPass?: string) => {
     e?.preventDefault();
+    if (isUnlocking) return;
+    
     let passToUse = providedPass || masterPassword;
     
-    if (!passToUse && uploadedKeyFile) {
-        const recovered = await AdvancedSecurityService.recoverMasterPassword(uploadedKeyFile);
-        if (recovered) passToUse = recovered;
-    }
-
     if (!passToUse) {
-        if (!isKeyFileRemembered) setToast(t.wrongPassword);
+        setToast(t.wrongPassword);
         return;
     }
 
-    if (isVerifyingImport && pendingImportData) {
-      try {
-        if (!uploadedKeyFile) {
-          setToast(t.chooseKeyFile);
+    setIsUnlocking(true);
+
+    try {
+      if (isVerifyingImport && pendingImportData) {
+        const result = await SecurityService.importVault(JSON.stringify(pendingImportData), passToUse);
+        if (result.success) {
+          setEntries(result.data);
+          setIsLocked(false);
+          setView('vault');
+          setMasterPassword(passToUse);
+          setPendingImportData(null);
+          setIsVerifyingImport(false);
+          setToast(t.success);
+          
+          if (pendingImportData.header) {
+             const kf = {
+               type: 'MASTER_KEY_FILE',
+               version: '3.0.0',
+               salt: pendingImportData.header.salt,
+               iterations: pendingImportData.header.iterations,
+               authHash: pendingImportData.header.authHash || '',
+               createdAt: Date.now()
+             };
+             localStorage.setItem('securepass_master_hash', JSON.stringify(kf));
+          }
           return;
+        } else {
+          throw new Error("Import failed");
         }
+      }
 
-        const isKeyValid = await AdvancedSecurityService.verifyKeyFile(passToUse, uploadedKeyFile);
-        if (!isKeyValid) throw new Error("Invalid Key File");
+      const masterHashStr = localStorage.getItem('securepass_master_hash');
+      let keyFileToUse = masterHashStr;
+      if (uploadedKeyFile) {
+        keyFileToUse = JSON.stringify(uploadedKeyFile);
+      }
 
-        if (pendingImportData.masterHash) {
-          await SecurityService.decrypt(pendingImportData.masterHash, passToUse);
-        }
-
-        let decryptedEntries: PasswordEntry[] = [];
-        if (pendingImportData.vault) {
-          const decrypted = await SecurityService.decrypt(pendingImportData.vault, passToUse);
-          decryptedEntries = JSON.parse(decrypted);
-        }
-
-        if (pendingImportData.vault) localStorage.setItem('securepass_vault', JSON.stringify(pendingImportData.vault));
-        if (pendingImportData.masterHash) localStorage.setItem('securepass_master_hash', JSON.stringify(pendingImportData.masterHash));
-        if (pendingImportData.settings) { 
-          localStorage.setItem('securepass_settings', JSON.stringify(pendingImportData.settings)); 
-          setSettings(pendingImportData.settings); 
-        }
-
-        await AdvancedSecurityService.rememberMasterPassword(passToUse, uploadedKeyFile);
-
-        setEntries(decryptedEntries);
-        setIsLocked(false);
-        setView('vault');
-        setMasterPassword(passToUse);
-        setPendingImportData(null);
-        setIsVerifyingImport(false);
-        setToast(t.success);
-        return;
-      } catch (err) {
-        setToast("Không cho phép nhập dữ liệu. Vui lòng thử lại!");
-        setPendingImportData(null);
-        setIsVerifyingImport(false);
-        setMasterPassword('');
-        setUploadedKeyFile(null);
+      if (!keyFileToUse) {
+        setToast(t.chooseKeyFile);
         return;
       }
-    }
 
-    const verificationToken = localStorage.getItem('securepass_master_hash');
-    if (verificationToken) {
-      try {
-        await SecurityService.decrypt(JSON.parse(verificationToken), passToUse);
-      } catch {
+      const result = await SecurityService.verifyAccess(passToUse, keyFileToUse);
+      if (!result.success) {
         setToast(t.wrongPassword);
         return;
       }
-    }
 
-    try {
+      if (uploadedKeyFile) {
+        localStorage.setItem('securepass_master_hash', keyFileToUse);
+      }
+
       const encryptedVault = localStorage.getItem('securepass_vault');
       let decryptedEntries: PasswordEntry[] = [];
       if (encryptedVault) {
-        const decrypted = await SecurityService.decrypt(JSON.parse(encryptedVault), passToUse);
-        decryptedEntries = JSON.parse(decrypted);
-      }
-
-      if (uploadedKeyFile) {
-        await AdvancedSecurityService.rememberMasterPassword(passToUse, uploadedKeyFile);
+        const decrypted = await SecurityService.decryptVault(JSON.parse(encryptedVault), passToUse);
+        if (decrypted) decryptedEntries = JSON.parse(decrypted);
+        else throw new Error("Decryption failed");
       }
 
       setEntries(decryptedEntries);
       setIsLocked(false);
       setView('vault');
       setMasterPassword(passToUse);
-
-      if (!verificationToken) {
-        const newHash = await SecurityService.encrypt("VALID_SESSION", passToUse);
-        localStorage.setItem('securepass_master_hash', JSON.stringify(newHash));
-        setSettings(prev => ({ ...prev, hasMasterPassword: true }));
-      }
-    } catch {
+      setSettings(prev => ({ ...prev, hasMasterPassword: true }));
+    } catch (err) {
+      console.error("Login error", err);
       setToast(t.wrongPassword);
+    } finally {
+      setIsUnlocking(false);
     }
   };
 
@@ -618,7 +611,7 @@ const App: React.FC = () => {
       const decryptedPass = await SecurityService.authenticateBiometric();
       if (decryptedPass) handleLogin(undefined, decryptedPass);
     } catch (err: any) {
-      if (err.name !== 'NotAllowedError') setToast(t.biometricError);
+      setToast(t.biometricError);
     }
   };
 
@@ -631,14 +624,7 @@ const App: React.FC = () => {
         const content = JSON.parse(event.target?.result as string);
         if (content.type !== 'MASTER_KEY_FILE') throw new Error();
         setUploadedKeyFile(content);
-        const recovered = await AdvancedSecurityService.recoverMasterPassword(content);
-        setIsKeyFileRemembered(!!recovered);
-        if (recovered) {
-            setToast(t.keyFileDetected);
-            handleLogin(undefined, recovered);
-        } else {
-            setToast(t.firstTimeUnlock);
-        }
+        setToast(t.keyFileDetected);
       } catch {
         setToast('File không hợp lệ');
         setUploadedKeyFile(null);
@@ -647,12 +633,10 @@ const App: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const handleExport = () => {
-    const vault = localStorage.getItem('securepass_vault');
-    const masterHash = localStorage.getItem('securepass_master_hash');
-    const settingsStr = localStorage.getItem('securepass_settings');
-    const backupData = { type: 'SECUREPASS_BACKUP', version: '2.2.0', vault: vault ? JSON.parse(vault) : null, masterHash: masterHash ? JSON.parse(masterHash) : null, settings: settingsStr ? JSON.parse(settingsStr) : null, exportedAt: Date.now() };
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+  const handleExport = async () => {
+    if (!masterPassword) return;
+    const backup = await SecurityService.exportVault(entries, masterPassword);
+    const blob = new Blob([backup], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -672,7 +656,7 @@ const App: React.FC = () => {
         if (content.type === 'SECUREPASS_BACKUP') {
           setPendingImportData(content);
           setIsVerifyingImport(true);
-          setToast("Vui lòng nhập mật khẩu và file khóa của dữ liệu mới.");
+          setToast("Vui lòng nhập mật khẩu của dữ liệu mới.");
           handleLock();
         } else { setToast(t.importFileErrorMsg); }
       } catch (err) { setToast(t.importFileErrorMsg); }
@@ -683,7 +667,7 @@ const App: React.FC = () => {
   const saveVault = async (updated: PasswordEntry[]) => {
     if (!masterPassword) return;
     try {
-      const encrypted = await SecurityService.encrypt(JSON.stringify(updated), masterPassword);
+      const encrypted = await SecurityService.encryptVault(JSON.stringify(updated), masterPassword);
       localStorage.setItem('securepass_vault', JSON.stringify(encrypted));
     } catch { setToast("Lỗi lưu trữ."); }
   };
@@ -720,7 +704,7 @@ const App: React.FC = () => {
       className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-[#1a1a1a]'}`}
     >
       {isLocked ? (
-        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isKeyFileRemembered={isKeyFileRemembered} isVerifyingImport={isVerifyingImport} />
+        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isKeyFileRemembered={isKeyFileRemembered} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} />
       ) : (
         <div className="flex-1 flex flex-col relative overflow-hidden h-full">
           {view === 'vault' && <VaultScreen t={t} isDark={isDark} entries={entries} searchQuery={searchQuery} setSearchQuery={setSearchQuery} activeCategory={activeCategory} setActiveCategory={setActiveCategory} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} settings={settings} setView={setView} />}
@@ -750,13 +734,20 @@ const App: React.FC = () => {
           )}
         </div>
       )}
-      {isMasterModalOpen && <MasterPasswordModal t={t} isDark={isDark} onClose={() => setIsMasterModalOpen(false)} setMasterPassword={async (np: string) => { localStorage.removeItem('securepass_wrapped_master'); const ver = await SecurityService.encrypt("VALID_SESSION", np); localStorage.setItem('securepass_master_hash', JSON.stringify(ver)); if (!isLocked) { const enc = await SecurityService.encrypt(JSON.stringify(entries), np); localStorage.setItem('securepass_vault', JSON.stringify(enc)); } setMasterPassword(np); setSettings(p => ({ ...p, hasMasterPassword: true })); }} masterPassword={masterPassword} />}
+      {isMasterModalOpen && <MasterPasswordModal t={t} isDark={isDark} onClose={() => setIsMasterModalOpen(false)} setMasterPassword={async (np: string, kf: any) => { 
+        localStorage.setItem('securepass_master_hash', JSON.stringify(kf)); 
+        // Always encrypt current entries (empty if locked) with new password
+        const enc = await SecurityService.encryptVault(JSON.stringify(entries), np); 
+        localStorage.setItem('securepass_vault', JSON.stringify(enc)); 
+        setMasterPassword(np); 
+        setSettings(p => ({ ...p, hasMasterPassword: true })); 
+      }} masterPassword={masterPassword} />}
       {toast && <div className="fixed top-12 left-1/2 -translate-x-1/2 bg-[#4CAF50] text-white px-6 py-2 rounded-full text-xs font-bold shadow-2xl z-[200] animate-in fade-in slide-in-from-top-10">{toast}</div>}
     </div>
   );
 };
 
-const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport }: any) => (
+const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => (
   <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
     <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
       <div className="flex flex-col items-center mb-8">
@@ -765,20 +756,51 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
         <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1">{t.unlockSubtitle}</p>
       </div>
       <form onSubmit={handleLogin} className="space-y-4">
-        {(!isKeyFileRemembered || !uploadedKeyFile) ? (
-            <input autoFocus type="password" placeholder={t.masterPassword} value={masterPassword} onChange={(e) => setMasterPassword(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} />
-        ) : (
-            <div className="bg-[#4CAF50]/10 border border-[#4CAF50]/20 rounded-2xl p-6 text-center"><Icons.Monitor className="text-[#4CAF50] mx-auto mb-2" size={32} /><p className="text-[#4CAF50] text-xs font-black uppercase">{t.keyFileDetected}</p></div>
-        )}
-        <button type="submit" disabled={!uploadedKeyFile && !isKeyFileRemembered} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 disabled:opacity-30"><Icons.Unlock size={18} className="inline mr-2" /> {t.unlockVault}</button>
+        <div className="space-y-4">
+          <div className="relative">
+            <input 
+              autoFocus 
+              type="password" 
+              placeholder={t.masterPassword} 
+              value={masterPassword} 
+              onChange={(e) => setMasterPassword(e.target.value)} 
+              className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} 
+            />
+            {uploadedKeyFile && (
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4CAF50] flex items-center gap-1">
+                <Icons.CircleCheck size={16} />
+                <span className="text-[9px] font-black uppercase">Key OK</span>
+              </div>
+            )}
+          </div>
+
+          {uploadedKeyFile && (
+            <div className={`p-3 rounded-xl border flex items-center gap-3 ${isDark ? 'bg-[#4CAF50]/5 border-[#4CAF50]/20' : 'bg-[#4CAF50]/5 border-[#4CAF50]/10'}`}>
+              <Icons.FileCheck className="text-[#4CAF50]" size={18} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black uppercase text-[#4CAF50] truncate">File Khóa: OK</p>
+                <p className="text-[8px] text-gray-500 truncate">Sẵn sàng mở khóa</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button type="submit" disabled={isUnlocking} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+          {isUnlocking ? <Icons.Loader2 className="animate-spin" size={18} /> : <Icons.Unlock size={18} />} 
+          {isUnlocking ? 'Đang xác thực...' : t.unlockVault}
+        </button>
+        
         {!isVerifyingImport && (
-          <button type="button" onClick={handleBiometricLogin} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-700'}`}><Icons.Fingerprint size={22} className="text-[#4CAF50]" /> {t.biometricUnlock}</button>
+          <button type="button" disabled={isUnlocking} onClick={handleBiometricLogin} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm disabled:opacity-50 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-700'}`}><Icons.Fingerprint size={22} className="text-[#4CAF50]" /> {t.biometricUnlock}</button>
         )}
+        
         <div className="pt-4 space-y-4 text-center">
-          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'} ${uploadedKeyFile ? 'border-[#4CAF50]/60' : ''}`}>
-            <Icons.Database size={24} /><span className="text-xs font-bold uppercase">{uploadedKeyFile ? "FILE: OK" : t.chooseKeyFile}</span>
+          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${uploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
+            <Icons.Database size={24} className={uploadedKeyFile ? 'text-[#4CAF50]' : ''} />
+            <span className={`text-xs font-bold uppercase ${uploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{uploadedKeyFile ? "Đã chọn File Khóa" : t.chooseKeyFile}</span>
             <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileSelection} />
           </label>
+          
           <div className="mt-4">
             <p className="text-[10px] uppercase font-bold text-gray-500">{t.noMasterPassYet}</p>
             <button type="button" onClick={() => setIsMasterModalOpen(true)} className="text-[#4CAF50] text-xs font-black mt-1 uppercase tracking-wider">{t.createOne}</button>
@@ -879,15 +901,46 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
   const [newMP, setNewMP] = useState('');
   const [confirmMP, setConfirmMP] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
-  const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*()_+~`|}{[\]:;?><,./-]).{8,30}$/;
+  const [keyFile, setKeyFile] = useState<any>(null);
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+~`|}{[\]:;?><,./-]).{8,30}$/;
   
+  const strength = calculateStrength(newMP);
+  const isValid = passwordRegex.test(newMP);
+
+  const handleSave = async () => {
+    const { salt, authHash } = await SecurityService.initMasterAuth(newMP);
+    const kf = {
+      type: 'MASTER_KEY_FILE',
+      version: '3.0.0',
+      salt,
+      iterations: 100000,
+      authHash,
+      createdAt: Date.now()
+    };
+    setKeyFile(kf);
+    await setMasterPassword(newMP, kf);
+    setIsSuccess(true);
+  };
+
+  const downloadKeyFile = () => {
+    if (!keyFile) return;
+    const blob = new Blob([JSON.stringify(keyFile, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `securepass_key_${new Date().toISOString().split('T')[0]}.vpass`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (isSuccess) return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-6 animate-in fade-in">
       <div className={`w-full max-sm rounded-[2.5rem] border p-8 space-y-6 text-center ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
         <Icons.Check className="text-[#4CAF50] mx-auto" size={48}/>
         <h2 className="text-xl font-black">{t.success}</h2>
-        <p className="text-xs text-gray-500">{t.saveKeyWarning}</p>
-        <button onClick={onClose} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-[#4CAF50]/20">CLOSE</button>
+        <p className="text-xs text-gray-500">{t.keyFileInstruction}</p>
+        <button onClick={downloadKeyFile} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-[#4CAF50]/20 flex items-center justify-center gap-2"><Icons.Download size={16}/> {t.saveKeyFileBtn}</button>
+        <button onClick={onClose} className="w-full bg-white/5 text-gray-500 py-4 rounded-3xl font-bold uppercase tracking-widest text-xs">CLOSE</button>
       </div>
     </div>
   );
@@ -900,12 +953,31 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.newMasterPass}</label>
             <input type="password" value={newMP} onChange={e => setNewMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} />
+            
+            {/* Strength Meter */}
+            <div className="mt-2 px-1">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[9px] font-bold uppercase text-gray-500">{t.passwordStrength}</span>
+                <span className="text-[9px] font-bold" style={{ color: getStrengthColor(strength) }}>{strength}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-gray-200 dark:bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full transition-all duration-500" style={{ width: `${strength}%`, backgroundColor: getStrengthColor(strength) }} />
+              </div>
+            </div>
+
+            {/* Validation Warning */}
+            {!isValid && newMP.length > 0 && (
+              <p className="text-[10px] text-red-500 font-bold mt-2 ml-1 leading-tight">{t.passwordRuleError}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.confirmMasterPass}</label>
             <input type="password" value={confirmMP} onChange={e => setConfirmMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} />
+            {newMP !== confirmMP && confirmMP.length > 0 && (
+              <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">{t.passwordMismatch}</p>
+            )}
           </div>
-          <button onClick={() => { setMasterPassword(newMP); setIsSuccess(true); }} disabled={!passwordRegex.test(newMP) || newMP !== confirmMP} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs disabled:opacity-30 active:scale-95 transition-all shadow-lg shadow-[#4CAF50]/20">{t.save}</button>
+          <button onClick={handleSave} disabled={!isValid || newMP !== confirmMP} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs disabled:opacity-30 active:scale-95 transition-all shadow-lg shadow-[#4CAF50]/20">{t.save}</button>
         </div>
       </div>
     </div>
