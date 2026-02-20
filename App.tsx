@@ -395,7 +395,7 @@ const App: React.FC = () => {
   const [isLocked, setIsLocked] = useState(true);
   const [masterPassword, setMasterPassword] = useState('');
   const [uploadedKeyFile, setUploadedKeyFile] = useState<any>(null);
-  const [isKeyFileRemembered, setIsKeyFileRemembered] = useState(false);
+  const [isKeyFileRemembered, setIsKeyFileRemembered] = useState(() => !!localStorage.getItem('securepass_master_hash'));
   const [pendingImportData, setPendingImportData] = useState<any>(null);
   const [isVerifyingImport, setIsVerifyingImport] = useState(false);
   
@@ -482,7 +482,7 @@ const App: React.FC = () => {
     setMasterPassword('');
     setView('login');
     setUploadedKeyFile(null);
-    setIsKeyFileRemembered(false);
+    setIsKeyFileRemembered(!!localStorage.getItem('securepass_master_hash'));
     setSettingsSubView('main');
   };
 
@@ -763,7 +763,13 @@ const App: React.FC = () => {
 
 const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => {
   const hasKeyFile = uploadedKeyFile || isKeyFileRemembered;
+  const hasRememberedPass = !!localStorage.getItem('securepass_remembered_mp');
   
+  // Show password field if it's the first time/device change (no remembered password)
+  // OR if a new key file is uploaded (to verify it)
+  // OR if we are verifying an import
+  const showPasswordField = !hasRememberedPass || !!uploadedKeyFile || isVerifyingImport;
+
   return (
     <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
       <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
@@ -774,7 +780,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-4">
-            {!hasKeyFile ? (
+            {showPasswordField ? (
               <div className="relative">
                 <input 
                   autoFocus 
@@ -782,18 +788,20 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
                   placeholder={t.masterPassword} 
                   value={masterPassword} 
                   onChange={(e) => setMasterPassword(e.target.value)} 
-                  className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} 
+                  className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} 
                 />
               </div>
             ) : (
-              <div className={`p-4 rounded-2xl border flex items-center gap-3 ${isDark ? 'bg-[#4CAF50]/5 border-[#4CAF50]/20' : 'bg-[#4CAF50]/5 border-[#4CAF50]/10'}`}>
-                <div className="w-10 h-10 bg-[#4CAF50] rounded-xl flex items-center justify-center shadow-lg shadow-[#4CAF50]/20">
-                  <Icons.FileCheck className="text-white" size={20} />
+              hasKeyFile && (
+                <div className={`p-4 rounded-2xl border flex items-center gap-3 ${isDark ? 'bg-[#4CAF50]/5 border-[#4CAF50]/20' : 'bg-[#4CAF50]/5 border-[#4CAF50]/10'}`}>
+                  <div className="w-10 h-10 bg-[#4CAF50] rounded-xl flex items-center justify-center shadow-lg shadow-[#4CAF50]/20">
+                    <Icons.FileCheck className="text-white" size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-black uppercase text-[#4CAF50] truncate">Đã chọn File Khóa</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black uppercase text-[#4CAF50] truncate">Đã chọn File Khóa</p>
-                </div>
-              </div>
+              )
             )}
           </div>
 
