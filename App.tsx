@@ -528,6 +528,15 @@ const App: React.FC = () => {
     
     let passToUse = providedPass || masterPassword;
     
+    // If no password provided, try to use remembered password if key file is present
+    if (!passToUse) {
+      const remembered = localStorage.getItem('securepass_remembered_mp');
+      const hasKeyFile = !!localStorage.getItem('securepass_master_hash') || !!uploadedKeyFile;
+      if (remembered && hasKeyFile) {
+        passToUse = remembered;
+      }
+    }
+
     if (!passToUse) {
         setToast(t.wrongPassword);
         return;
@@ -557,6 +566,8 @@ const App: React.FC = () => {
                createdAt: Date.now()
              };
              localStorage.setItem('securepass_master_hash', JSON.stringify(kf));
+             // Also remember this password for the device
+             localStorage.setItem('securepass_remembered_mp', passToUse);
           }
           return;
         } else {
@@ -584,6 +595,9 @@ const App: React.FC = () => {
       if (uploadedKeyFile) {
         localStorage.setItem('securepass_master_hash', keyFileToUse);
       }
+      
+      // Ensure password is remembered for this device
+      localStorage.setItem('securepass_remembered_mp', passToUse);
 
       const encryptedVault = localStorage.getItem('securepass_vault');
       let decryptedEntries: PasswordEntry[] = [];
@@ -708,7 +722,7 @@ const App: React.FC = () => {
       ) : (
         <div className="flex-1 flex flex-col relative overflow-hidden h-full">
           {view === 'vault' && <VaultScreen t={t} isDark={isDark} entries={entries} searchQuery={searchQuery} setSearchQuery={setSearchQuery} activeCategory={activeCategory} setActiveCategory={setActiveCategory} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} settings={settings} setView={setView} />}
-          {view === 'generator' && <GeneratorScreen t={t} isDark={isDark} genPass={genPass} genConfig={genConfig} setGenConfig={setGenConfig} handleGenerator={handleGenerator} copy={copy} genHistory={genHistory} showGenHistory={showGenHistory} setShowGenHistory={setShowGenHistory} setToast={setToast} />}
+          {view === 'generator' && <GeneratorScreen t={t} isDark={isDark} genPass={genPass} genConfig={genConfig} setGenConfig={setGenConfig} handleGenerator={handleGenerator} copy={copy} genHistory={genHistory} showGenHistory={showGenHistory} setShowGenHistory={setShowGenHistory} setToast={setToast} onSave={(d: any) => { const n = { ...d, id: Math.random().toString(36).substring(2, 9), createdAt: Date.now(), strength: calculateStrength(d.password || '') }; const up = [n, ...entries]; setEntries(up); saveVault(up); }} />}
           {view === 'settings' && <SettingsScreen t={t} isDark={isDark} settings={settings} setSettings={setSettings} handleLock={handleLock} setView={setView} setIsMasterModalOpen={setIsMasterModalOpen} masterPassword={masterPassword} handleImport={handleImport} handleExport={handleExport} setToast={setToast} subView={settingsSubView} setSubView={setSettingsSubView} showAllFolders={showAllFolders} setShowAllFolders={setShowAllFolders} showAllSubFolders={showAllSubFolders} setShowAllSubFolders={setShowAllSubFolders} />}
           
           {showPlusMenu && (
@@ -747,69 +761,68 @@ const App: React.FC = () => {
   );
 };
 
-const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => (
-  <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
-    <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
-      <div className="flex flex-col items-center mb-8">
-        <div className="w-16 h-16 bg-[#4CAF50] rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-[#4CAF50]/10"><Icons.Lock className="text-white w-8 h-8" /></div>
-        <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.appTitle}</h1>
-        <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1">{t.unlockSubtitle}</p>
-      </div>
-      <form onSubmit={handleLogin} className="space-y-4">
-        <div className="space-y-4">
-          <div className="relative">
-            <input 
-              autoFocus 
-              type="password" 
-              placeholder={t.masterPassword} 
-              value={masterPassword} 
-              onChange={(e) => setMasterPassword(e.target.value)} 
-              className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} 
-            />
-            {uploadedKeyFile && (
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4CAF50] flex items-center gap-1">
-                <Icons.CircleCheck size={16} />
-                <span className="text-[9px] font-black uppercase">Key OK</span>
+const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => {
+  const hasKeyFile = uploadedKeyFile || isKeyFileRemembered;
+  
+  return (
+    <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
+      <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-[#4CAF50] rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-[#4CAF50]/10"><Icons.Lock className="text-white w-8 h-8" /></div>
+          <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.appTitle}</h1>
+          <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1">{t.unlockSubtitle}</p>
+        </div>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-4">
+            {!hasKeyFile ? (
+              <div className="relative">
+                <input 
+                  autoFocus 
+                  type="password" 
+                  placeholder={t.masterPassword} 
+                  value={masterPassword} 
+                  onChange={(e) => setMasterPassword(e.target.value)} 
+                  className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} 
+                />
+              </div>
+            ) : (
+              <div className={`p-4 rounded-2xl border flex items-center gap-3 ${isDark ? 'bg-[#4CAF50]/5 border-[#4CAF50]/20' : 'bg-[#4CAF50]/5 border-[#4CAF50]/10'}`}>
+                <div className="w-10 h-10 bg-[#4CAF50] rounded-xl flex items-center justify-center shadow-lg shadow-[#4CAF50]/20">
+                  <Icons.FileCheck className="text-white" size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-black uppercase text-[#4CAF50] truncate">Đã chọn File Khóa</p>
+                </div>
               </div>
             )}
           </div>
 
-          {uploadedKeyFile && (
-            <div className={`p-3 rounded-xl border flex items-center gap-3 ${isDark ? 'bg-[#4CAF50]/5 border-[#4CAF50]/20' : 'bg-[#4CAF50]/5 border-[#4CAF50]/10'}`}>
-              <Icons.FileCheck className="text-[#4CAF50]" size={18} />
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase text-[#4CAF50] truncate">File Khóa: OK</p>
-                <p className="text-[8px] text-gray-500 truncate">Sẵn sàng mở khóa</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <button type="submit" disabled={isUnlocking} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-          {isUnlocking ? <Icons.Loader2 className="animate-spin" size={18} /> : <Icons.Unlock size={18} />} 
-          {isUnlocking ? 'Đang xác thực...' : t.unlockVault}
-        </button>
-        
-        {!isVerifyingImport && (
-          <button type="button" disabled={isUnlocking} onClick={handleBiometricLogin} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm disabled:opacity-50 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-700'}`}><Icons.Fingerprint size={22} className="text-[#4CAF50]" /> {t.biometricUnlock}</button>
-        )}
-        
-        <div className="pt-4 space-y-4 text-center">
-          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${uploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
-            <Icons.Database size={24} className={uploadedKeyFile ? 'text-[#4CAF50]' : ''} />
-            <span className={`text-xs font-bold uppercase ${uploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{uploadedKeyFile ? "Đã chọn File Khóa" : t.chooseKeyFile}</span>
-            <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileSelection} />
-          </label>
+          <button type="submit" disabled={isUnlocking} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+            {isUnlocking ? <Icons.Loader2 className="animate-spin" size={18} /> : <Icons.Unlock size={18} />} 
+            {isUnlocking ? 'Đang xác thực...' : t.unlockVault}
+          </button>
           
-          <div className="mt-4">
-            <p className="text-[10px] uppercase font-bold text-gray-500">{t.noMasterPassYet}</p>
-            <button type="button" onClick={() => setIsMasterModalOpen(true)} className="text-[#4CAF50] text-xs font-black mt-1 uppercase tracking-wider">{t.createOne}</button>
+          {!isVerifyingImport && (
+            <button type="button" disabled={isUnlocking} onClick={handleBiometricLogin} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm disabled:opacity-50 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-700'}`}><Icons.Fingerprint size={22} className="text-[#4CAF50]" /> {t.biometricUnlock}</button>
+          )}
+          
+          <div className="pt-4 space-y-4 text-center">
+            <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${uploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
+              <Icons.Database size={24} className={uploadedKeyFile ? 'text-[#4CAF50]' : ''} />
+              <span className={`text-xs font-bold uppercase ${uploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{uploadedKeyFile ? "Thay đổi File Khóa" : t.chooseKeyFile}</span>
+              <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileSelection} />
+            </label>
+            
+            <div className="mt-4">
+              <p className="text-[10px] uppercase font-bold text-gray-500">{t.noMasterPassYet}</p>
+              <button type="button" onClick={() => setIsMasterModalOpen(true)} className="text-[#4CAF50] text-xs font-black mt-1 uppercase tracking-wider">{t.createOne}</button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCategory, setActiveCategory, setSelectedEntry, setIsEditing, copy, deleteEntry, deleteClickCount, settings, setView }: any) => {
   const [isFoldersOpen, setIsFoldersOpen] = useState(false);
@@ -878,29 +891,53 @@ const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCa
   );
 };
 
-const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, deleteEntry, deleteClickCount }: any) => (
-  <div onClick={() => setSelectedEntry(entry)} className={`border rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
-    <div className="flex items-center gap-3 overflow-hidden">
-      <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-[#4CAF50] ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
-        {entry.type === 'login' ? <Icons.User size={22} /> : entry.type === 'card' ? <Icons.CreditCard size={22} /> : entry.type === 'contact' ? <Icons.Smartphone size={22} /> : <Icons.FileText size={22} />}
+const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, deleteEntry, deleteClickCount }: any) => {
+  const getMainText = () => {
+    if (entry.group === 'Mạng Internet' && entry.type === 'login') return "Mật khẩu Wifi";
+    switch (entry.type) {
+      case 'login': return entry.subGroup || entry.username || 'Item';
+      case 'card': return entry.title || 'Item';
+      case 'document': return entry.documentType ? (t[entry.documentType] || entry.documentType) : 'Item';
+      case 'contact': return entry.nickname || entry.fullName || 'Item';
+      default: return entry.title || 'Item';
+    }
+  };
+
+  const getSubText = () => {
+    if (entry.group === 'Mạng Internet' && entry.type === 'login') return entry.username || '...';
+    switch (entry.type) {
+      case 'login': return entry.username || '...';
+      case 'card': return entry.cardHolder || '...';
+      case 'document': return entry.fullName || '...';
+      case 'contact': return entry.fullName || '...';
+      default: return entry.username || entry.cardNumber || entry.phone || '...';
+    }
+  };
+
+  return (
+    <div onClick={() => setSelectedEntry(entry)} className={`border rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer ${isDark ? 'bg-[#181818] border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
+      <div className="flex items-center gap-3 overflow-hidden">
+        <div className={`shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-[#4CAF50] ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+          {entry.type === 'login' ? <Icons.User size={22} /> : entry.type === 'card' ? <Icons.CreditCard size={22} /> : entry.type === 'contact' ? <Icons.Smartphone size={22} /> : <Icons.FileText size={22} />}
+        </div>
+        <div className="overflow-hidden">
+          <h4 className="text-sm font-bold truncate leading-tight">{getMainText()}</h4>
+          <p className="text-[10px] uppercase tracking-tighter mt-1 text-gray-500 truncate">{getSubText()}</p>
+        </div>
       </div>
-      <div className="overflow-hidden">
-        <h4 className="text-sm font-bold truncate leading-tight">{entry.fullName || entry.nickname || entry.username || entry.cardHolder || (entry.documentType ? t[entry.documentType] : entry.title || 'Item')}</h4>
-        <p className="text-[10px] uppercase tracking-tighter mt-1 text-gray-500 truncate">{entry.username || entry.cardNumber || entry.phone || '...'}</p>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Pencil size={18} /></button>
+        <button onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} className={`p-2 transition-all ${deleteClickCount.id === entry.id ? 'text-red-500' : 'text-gray-500'}`}><Icons.Trash2 size={18} /></button>
       </div>
     </div>
-    <div className="flex items-center gap-1 shrink-0">
-      <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Pencil size={18} /></button>
-      <button onClick={(e) => { e.stopPropagation(); copy(entry.password || entry.cardNumber || entry.phone || ''); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={18} /></button>
-      <button onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} className={`p-2 transition-all ${deleteClickCount.id === entry.id ? 'text-red-500' : 'text-gray-500'}`}><Icons.Trash2 size={18} /></button>
-    </div>
-  </div>
-);
+  );
+};
 
 const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => {
   const [newMP, setNewMP] = useState('');
   const [confirmMP, setConfirmMP] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showBioSetup, setShowBioSetup] = useState(false);
   const [keyFile, setKeyFile] = useState<any>(null);
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+~`|}{[\]:;?><,./-]).{8,30}$/;
   
@@ -918,6 +955,8 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
       createdAt: Date.now()
     };
     setKeyFile(kf);
+    // Store the password for "remembered" device access
+    localStorage.setItem('securepass_remembered_mp', newMP);
     await setMasterPassword(newMP, kf);
     setIsSuccess(true);
   };
@@ -931,16 +970,45 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
     link.download = `securepass_key_${new Date().toISOString().split('T')[0]}.vpass`;
     link.click();
     URL.revokeObjectURL(url);
+    setShowBioSetup(true);
   };
+
+  const handleEnableBio = async () => {
+    try {
+      await SecurityService.enableBiometric(newMP);
+      onClose();
+    } catch (err) {
+      onClose();
+    }
+  };
+
+  if (showBioSetup) return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-6 animate-in fade-in">
+      <div className={`w-full max-w-sm rounded-[2.5rem] border p-8 space-y-6 text-center ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
+        <div className="w-20 h-20 bg-[#4CAF50]/10 rounded-full flex items-center justify-center mx-auto mb-2">
+          <Icons.Fingerprint className="text-[#4CAF50]" size={40}/>
+        </div>
+        <h2 className="text-xl font-black">Thiết lập Sinh trắc học</h2>
+        <p className="text-xs text-gray-500 leading-relaxed">Sử dụng vân tay hoặc khuôn mặt để mở khóa nhanh chóng mà không cần nhập mật khẩu.</p>
+        <div className="space-y-3">
+          <button onClick={handleEnableBio} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-[#4CAF50]/20 flex items-center justify-center gap-2">
+            <Icons.Shield size={16}/> Thiết lập ngay
+          </button>
+          <button onClick={onClose} className={`w-full py-4 rounded-3xl font-bold uppercase tracking-widest text-xs border transition-all ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+            Để sau
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   if (isSuccess) return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-6 animate-in fade-in">
       <div className={`w-full max-sm rounded-[2.5rem] border p-8 space-y-6 text-center ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
-        <Icons.Check className="text-[#4CAF50] mx-auto" size={48}/>
+        <Icons.CircleCheck className="text-[#4CAF50] mx-auto" size={48}/>
         <h2 className="text-xl font-black">{t.success}</h2>
         <p className="text-xs text-gray-500">{t.keyFileInstruction}</p>
         <button onClick={downloadKeyFile} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-[#4CAF50]/20 flex items-center justify-center gap-2"><Icons.Download size={16}/> {t.saveKeyFileBtn}</button>
-        <button onClick={onClose} className="w-full bg-white/5 text-gray-500 py-4 rounded-3xl font-bold uppercase tracking-widest text-xs">CLOSE</button>
       </div>
     </div>
   );
@@ -1146,11 +1214,18 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
   const copyableField = (label: string, field: string, value: string, type: string = "text", placeholder: string = "") => {
     if (isView && !value) return null;
     return (
-      <div className="space-y-1 w-full">
-        <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{label}</label>
+      <div className="space-y-1 w-full min-w-0">
+        <label className="text-[10px] font-black uppercase text-gray-500 ml-1 truncate block">{label}</label>
         <div className="relative">
-          <input disabled={isView} type={type} value={value} onChange={e => setLocalData({...localData, [field]: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 font-medium outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-gray-900 focus:border-[#4CAF50]/50'}`} placeholder={placeholder} />
-          <button type="button" onClick={() => copy(value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#4CAF50] p-2 transition-colors"><Icons.Copy size={16}/></button>
+          <input 
+            disabled={isView} 
+            type={type} 
+            value={value} 
+            onChange={e => setLocalData({...localData, [field]: e.target.value})} 
+            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-gray-900 focus:border-[#4CAF50]/50'}`} 
+            placeholder={placeholder} 
+          />
+          {!isView && <button type="button" onClick={() => copy(value)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#4CAF50] p-2 transition-colors"><Icons.Copy size={14}/></button>}
         </div>
       </div>
     );
@@ -1166,8 +1241,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         <div className="max-w-md mx-auto space-y-5">
           {localData.type === 'login' && (
             <>
-              {(!isView || (localData.group && localData.group !== '---')) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3.5 px-4 outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
-              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
+              {(!isView || (localData.group && localData.group !== '---')) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
+              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
               {copyableField(t.username, 'username', localData.username || "", "text", t.usernameHint)}
               {copyableField(t.password, 'password', localData.password || "", "password")}
               
@@ -1181,7 +1256,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     {copyableField(t.authCode, 'authCode', localData.authCode || "", "password", t.authCodeHint)}
                     {(!isView || localData.googleAuthQr) && (
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.googleAuthQr}</label>
+                        <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{localData.group === 'Mạng Internet' ? "Mã QR WiFi" : t.googleAuthQr}</label>
                         <label className={`w-full aspect-[2/1] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all ${isDark ? 'bg-black/40 border-white/10 hover:border-[#4CAF50]/50' : 'bg-white border-gray-200 hover:border-[#4CAF50]/50 shadow-sm'}`}>
                           {localData.googleAuthQr ? <img src={localData.googleAuthQr} className="w-full h-full object-contain" /> : <div className="text-center text-gray-500"><Icons.Plus className="mx-auto mb-1" size={24} /><span className="text-[10px] font-bold uppercase">{t.googleAuthQr}</span></div>}
                           <input type="file" className="hidden" accept="image/*" onChange={e => handleImage(e, 'googleAuthQr')} disabled={isView} />
@@ -1217,12 +1292,12 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
           {localData.type === 'card' && (
             <>
-              {(!isView || localData.title) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.title}</label><select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'} ${!localData.title ? 'text-gray-400' : ''}`}><option value="">{t.chooseBank}</option>{(settings.subFolders['Ngân hàng'] || []).filter(b => !WALLET_LIST.includes(b)).map(b => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>}
+              {(!isView || localData.title) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.title}</label><select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'} ${!localData.title ? 'text-gray-400' : ''}`}><option value="">{t.chooseBank}</option>{(settings.subFolders['Ngân hàng'] || []).filter(b => !WALLET_LIST.includes(b)).map(b => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>}
               {!WALLET_LIST.includes(localData.title) ? (
                 <>
                   {(!isView || localData.cardType || localData.expiryMonth) && (
                     <div className="space-y-5">
-                      {(!isView || localData.cardType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.cardType}</label><select disabled={isView} value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'} ${!localData.cardType ? 'text-gray-400' : ''}`}><option value="" disabled>{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>}
+                      {(!isView || localData.cardType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.cardType}</label><select disabled={isView} value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'} ${!localData.cardType ? 'text-gray-400' : ''}`}><option value="" disabled>{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>}
                       {copyableField(t.expiryLabel, 'expiryMonth', localData.expiryMonth || "", "text", t.expiryHint)}
                     </div>
                   )}
@@ -1264,63 +1339,73 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
           {localData.type === 'document' && (
             <>
-              {(!isView || localData.documentType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3.5 px-4 outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
+              {(!isView || localData.documentType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
               {localData.documentType && (
                 <div className="space-y-5 animate-in fade-in">
                   {/* Common document header fields */}
-                  {localData.documentType === 'health_insurance' ? copyableField(t.insuranceId, 'idNumber', localData.idNumber || "", "text", "...") :
-                   localData.documentType === 'driving_license' ? copyableField(t.licenseId, 'idNumber', localData.idNumber || "", "text", "...") :
-                   localData.documentType === 'passport' ? copyableField(t.passportId, 'idNumber', localData.idNumber || "", "text", "...") :
-                   copyableField("Số định danh", 'idNumber', localData.idNumber || "", "text", "Số hiệu định danh...")}
-                  
-                  {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên in hoa...")}
-                  
-                  <div className="space-y-5">
-                      {copyableField("Ngày sinh", 'dob', localData.dob || "", "date")}
-                      {(!isView || localData.gender) && (
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Giới tính</label>
-                          <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}>
-                            <option value="">--</option>
-                            <option value="Nam">Nam</option>
-                            <option value="Nữ">Nữ</option>
-                          </select>
-                        </div>
-                      )}
+                  <div className="space-y-4">
+                    {localData.documentType === 'health_insurance' ? copyableField(t.insuranceId, 'idNumber', localData.idNumber || "", "text", "...") :
+                     localData.documentType === 'driving_license' ? copyableField(t.licenseId, 'idNumber', localData.idNumber || "", "text", "...") :
+                     localData.documentType === 'passport' ? copyableField(t.passportId, 'idNumber', localData.idNumber || "", "text", "...") :
+                     copyableField("Số định danh", 'idNumber', localData.idNumber || "", "text", "Số hiệu định danh...")}
+                    
+                    {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên in hoa...")}
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                        {copyableField("Ngày sinh", 'dob', localData.dob || "", "date")}
+                        {(!isView || localData.gender) && (
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Giới tính</label>
+                            <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-sm ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}>
+                              <option value="">--</option>
+                              <option value="Nam">Nam</option>
+                              <option value="Nữ">Nữ</option>
+                            </select>
+                          </div>
+                        )}
+                    </div>
                   </div>
 
                   {/* Residence and specific fields by type */}
                   {localData.documentType === 'id_card' && (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {copyableField(t.birthRegPlace, 'birthRegPlace', localData.birthRegPlace || "", "text", "...")}
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "...")}
                     </div>
                   )}
 
                   {localData.documentType === 'health_insurance' && (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ...")}
                       {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Nơi đăng ký KCB...")}
-                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
-                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
+                      <div className="grid grid-cols-2 gap-3">
+                        {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
+                        {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
+                      </div>
                     </div>
                   )}
 
                   {localData.documentType === 'driving_license' && (
-                    <div className="space-y-5">
-                      {copyableField(t.classLabel, 'class', localData.class || "", "text", "Hạng...")}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        {copyableField(t.classLabel, 'class', localData.class || "", "text", "Hạng...")}
+                        {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cơ quan cấp...")}
+                      </div>
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
-                      {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cơ quan cấp...")}
-                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
-                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
+                      <div className="grid grid-cols-2 gap-3">
+                        {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
+                        {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
+                      </div>
                     </div>
                   )}
 
                   {localData.documentType === 'passport' && (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
-                      {copyableField(t.passportType, 'passportType', localData.passportType || "", "text", "P")}
-                      {copyableField(t.nationality, 'nationality', localData.nationality || "", "text", "VIỆT NAM")}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-1">{copyableField(t.passportType, 'passportType', localData.passportType || "", "text", "P")}</div>
+                        <div className="col-span-2">{copyableField(t.nationality, 'nationality', localData.nationality || "", "text", "VIỆT NAM")}</div>
+                      </div>
                       {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
                     </div>
                   )}
@@ -1365,7 +1450,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
   );
 };
 
-const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast }: any) => {
+const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast, onSave }: any) => {
   const [showQR, setShowQR] = useState(false);
   const [genMode, setGenMode] = useState<'password' | 'wifi' | 'share'>('password');
   const [wifiSsid, setWifiSsid] = useState('');
@@ -1378,6 +1463,29 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
     if (wifiSecurity === 'NONE') return `WIFI:S:${wifiSsid};T:nopass;;`;
     return `WIFI:S:${wifiSsid};T:${wifiSecurity};P:${wifiPassword};;`;
   }, [wifiSsid, wifiSecurity, wifiPassword]);
+
+  const handleSaveWifi = () => {
+    if (!wifiSsid) {
+      setToast("Vui lòng nhập tên WiFi");
+      return;
+    }
+    const canvas = document.getElementById('wifi-qr-canvas') as HTMLCanvasElement;
+    const qrDataUrl = canvas ? canvas.toDataURL() : '';
+    
+    const wifiEntry = {
+      type: 'login',
+      group: 'Mạng Internet',
+      subGroup: 'WiFi',
+      username: wifiSsid,
+      password: wifiPassword,
+      googleAuthQr: qrDataUrl,
+      notes: `Security: ${wifiSecurity}`,
+      isFrequent: true
+    };
+    
+    onSave(wifiEntry);
+    setToast(t.success);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
@@ -1416,7 +1524,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
                 <button onClick={() => { const link = document.createElement('a'); link.download = `wifi-${wifiSsid}.png`; link.href = (document.getElementById('wifi-qr-canvas') as HTMLCanvasElement).toDataURL(); link.click(); }} className="bg-[#4CAF50] text-white py-2.5 rounded-2xl font-bold text-[10px] uppercase shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
                   <Icons.Download size={14}/> {t.downloadQr}
                 </button>
-                <button onClick={() => setToast(t.success)} className={`py-2.5 rounded-2xl font-bold text-[10px] uppercase border active:scale-95 transition-all flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 text-[#4CAF50]' : 'bg-white border-gray-200 text-[#4CAF50] shadow-sm'}`}>
+                <button onClick={handleSaveWifi} className={`py-2.5 rounded-2xl font-bold text-[10px] uppercase border active:scale-95 transition-all flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 text-[#4CAF50]' : 'bg-white border-gray-200 text-[#4CAF50] shadow-sm'}`}>
                   <Icons.Save size={14}/> {t.saveToVault}
                 </button>
               </div>
