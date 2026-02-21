@@ -715,7 +715,7 @@ const App: React.FC = () => {
     <div 
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-[#1a1a1a]'}`}
+      className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-black'}`}
     >
       {isLocked ? (
         <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isKeyFileRemembered={isKeyFileRemembered} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} />
@@ -775,7 +775,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
       <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-[#4CAF50] rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-[#4CAF50]/10"><Icons.Lock className="text-white w-8 h-8" /></div>
-          <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.appTitle}</h1>
+          <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>{t.appTitle}</h1>
           <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1">{t.unlockSubtitle}</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
@@ -788,7 +788,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
                   placeholder={t.masterPassword} 
                   value={masterPassword} 
                   onChange={(e) => setMasterPassword(e.target.value)} 
-                  className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} 
+                  className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-black focus:border-[#4CAF50]/50'}`} 
                 />
               </div>
             ) : (
@@ -811,7 +811,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
           </button>
           
           {!isVerifyingImport && (
-            <button type="button" disabled={isUnlocking} onClick={handleBiometricLogin} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm disabled:opacity-50 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-700'}`}><Icons.Fingerprint size={22} className="text-[#4CAF50]" /> {t.biometricUnlock}</button>
+            <button type="button" disabled={isUnlocking} onClick={handleBiometricLogin} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm disabled:opacity-50 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-black'}`}><Icons.Fingerprint size={22} className="text-[#4CAF50]" /> {t.biometricUnlock}</button>
           )}
           
           <div className="pt-4 space-y-4 text-center">
@@ -834,6 +834,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
 
 const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCategory, setActiveCategory, setSelectedEntry, setIsEditing, copy, deleteEntry, deleteClickCount, settings, setView }: any) => {
   const [isFoldersOpen, setIsFoldersOpen] = useState(false);
+  const [showAllFrequent, setShowAllFrequent] = useState(false);
   const filteredEntries = useMemo(() => {
     let list = entries;
     if (activeCategory) list = list.filter((e: any) => activeCategory.type === 'type' ? e.type === activeCategory.val : e.group === activeCategory.val);
@@ -843,13 +844,16 @@ const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCa
     }
     return list;
   }, [entries, activeCategory, searchQuery]);
-  const frequentEntries = entries.filter((e: any) => e.isFrequent).slice(0, 6);
+  
+  const frequentEntries = entries.filter((e: any) => e.isFrequent);
+  const displayedFrequent = showAllFrequent ? frequentEntries : frequentEntries.slice(0, 4);
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <header className={`sticky top-0 z-40 h-16 border-b flex items-center px-4 justify-between transition-colors duration-500 ${isDark ? 'bg-[#111]/90 border-white/5' : 'bg-white/90 border-black/5'}`}>
         <div className="flex-1 relative">
           <Icons.Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-          <input type="text" placeholder={t.searchPlaceholder} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full border rounded-full py-2.5 pl-12 pr-4 outline-none ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-gray-900'}`} />
+          <input type="text" placeholder={t.searchPlaceholder} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full border rounded-full py-2.5 pl-12 pr-4 outline-none text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-black'}`} />
         </div>
         <button onClick={() => setView('settings')} className="ml-3 p-2 text-gray-500"><Icons.Settings size={22} /></button>
       </header>
@@ -863,7 +867,17 @@ const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCa
           <>
             <section>
               <h3 className="text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2 px-1 text-gray-500"><Icons.Star size={12}/> {t.frequentHeader}</h3>
-              <div className="space-y-2">{frequentEntries.map((e: any) => <EntryItem key={e.id} isDark={isDark} entry={e} t={t} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} />)}</div>
+              <div className="space-y-2">
+                {displayedFrequent.map((e: any) => <EntryItem key={e.id} isDark={isDark} entry={e} t={t} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} />)}
+                {frequentEntries.length > 4 && (
+                  <button 
+                    onClick={() => setShowAllFrequent(!showAllFrequent)} 
+                    className="w-full py-3 text-[10px] font-black uppercase text-[#4CAF50] tracking-widest text-center"
+                  >
+                    {showAllFrequent ? 'Thu gọn' : 'Xem thêm'}
+                  </button>
+                )}
+              </div>
             </section>
             <section>
               <h3 className="text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2 px-1 text-gray-500"><Icons.Shield size={12}/> {t.typesHeader}</h3>
@@ -929,12 +943,13 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
           {entry.type === 'login' ? <Icons.User size={22} /> : entry.type === 'card' ? <Icons.CreditCard size={22} /> : entry.type === 'contact' ? <Icons.Smartphone size={22} /> : <Icons.FileText size={22} />}
         </div>
         <div className="overflow-hidden">
-          <h4 className="text-sm font-bold truncate leading-tight">{getMainText()}</h4>
+          <h4 className={`text-sm font-bold truncate leading-tight ${!isDark ? 'text-black' : ''}`}>{getMainText()}</h4>
           <p className="text-[10px] uppercase tracking-tighter mt-1 text-gray-500 truncate">{getSubText()}</p>
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Pencil size={18} /></button>
+        <button onClick={(e) => { e.stopPropagation(); copy(entry.password || entry.cardNumber || entry.phone || entry.idNumber || ''); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={18} /></button>
         <button onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} className={`p-2 transition-all ${deleteClickCount.id === entry.id ? 'text-red-500' : 'text-gray-500'}`}><Icons.Trash2 size={18} /></button>
       </div>
     </div>
@@ -969,7 +984,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
     setIsSuccess(true);
   };
 
-  const downloadKeyFile = () => {
+  const downloadKeyFile = async () => {
     if (!keyFile) return;
     const blob = new Blob([JSON.stringify(keyFile, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -978,11 +993,22 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
     link.download = `securepass_key_${new Date().toISOString().split('T')[0]}.vpass`;
     link.click();
     URL.revokeObjectURL(url);
-    setShowBioSetup(true);
+    
+    const available = await SecurityService.isBiometricAvailable();
+    if (available) {
+      setShowBioSetup(true);
+    } else {
+      onClose();
+    }
   };
 
   const handleEnableBio = async () => {
     try {
+      const available = await SecurityService.isBiometricAvailable();
+      if (!available) {
+        onClose();
+        return;
+      }
       await SecurityService.enableBiometric(newMP);
       onClose();
     } catch (err) {
@@ -996,13 +1022,13 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
         <div className="w-20 h-20 bg-[#4CAF50]/10 rounded-full flex items-center justify-center mx-auto mb-2">
           <Icons.Fingerprint className="text-[#4CAF50]" size={40}/>
         </div>
-        <h2 className="text-xl font-black">Thiết lập Sinh trắc học</h2>
+        <h2 className={`text-xl font-black ${!isDark ? 'text-black' : ''}`}>Thiết lập Sinh trắc học</h2>
         <p className="text-xs text-gray-500 leading-relaxed">Sử dụng vân tay hoặc khuôn mặt để mở khóa nhanh chóng mà không cần nhập mật khẩu.</p>
         <div className="space-y-3">
           <button onClick={handleEnableBio} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-[#4CAF50]/20 flex items-center justify-center gap-2">
             <Icons.Shield size={16}/> Thiết lập ngay
           </button>
-          <button onClick={onClose} className={`w-full py-4 rounded-3xl font-bold uppercase tracking-widest text-xs border transition-all ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+          <button onClick={onClose} className={`w-full py-4 rounded-3xl font-bold uppercase tracking-widest text-xs border transition-all ${isDark ? 'bg-white/5 border-white/5 text-gray-400' : 'bg-gray-50 border-gray-200 text-black'}`}>
             Để sau
           </button>
         </div>
@@ -1014,7 +1040,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-6 animate-in fade-in">
       <div className={`w-full max-sm rounded-[2.5rem] border p-8 space-y-6 text-center ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
         <Icons.CircleCheck className="text-[#4CAF50] mx-auto" size={48}/>
-        <h2 className="text-xl font-black">{t.success}</h2>
+        <h2 className={`text-xl font-black ${!isDark ? 'text-black' : ''}`}>{t.success}</h2>
         <p className="text-xs text-gray-500">{t.keyFileInstruction}</p>
         <button onClick={downloadKeyFile} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-[#4CAF50]/20 flex items-center justify-center gap-2"><Icons.Download size={16}/> {t.saveKeyFileBtn}</button>
       </div>
@@ -1024,11 +1050,11 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in">
       <div className={`w-full max-w-md rounded-[2.5rem] border p-8 space-y-6 shadow-2xl ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
-        <div className="flex justify-between items-center"><h2 className="text-xl font-black">{t.createMasterPass}</h2><button onClick={onClose} className="text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.X size={24}/></button></div>
+        <div className="flex justify-between items-center"><h2 className={`text-xl font-black ${!isDark ? 'text-black' : ''}`}>{t.createMasterPass}</h2><button onClick={onClose} className="text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.X size={24}/></button></div>
         <div className="space-y-4">
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.newMasterPass}</label>
-            <input type="password" value={newMP} onChange={e => setNewMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} />
+            <input type="password" value={newMP} onChange={e => setNewMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-black focus:border-[#4CAF50]/50'}`} />
             
             {/* Strength Meter */}
             <div className="mt-2 px-1">
@@ -1048,7 +1074,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.confirmMasterPass}</label>
-            <input type="password" value={confirmMP} onChange={e => setConfirmMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-gray-900 focus:border-[#4CAF50]/50'}`} />
+            <input type="password" value={confirmMP} onChange={e => setConfirmMP(e.target.value)} className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-black focus:border-[#4CAF50]/50'}`} />
             {newMP !== confirmMP && confirmMP.length > 0 && (
               <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">{t.passwordMismatch}</p>
             )}
@@ -1060,7 +1086,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
   );
 };
 
-const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView, setIsMasterModalOpen, handleImport, handleExport, setToast, subView, setSubView, showAllFolders, setShowAllFolders, showAllSubFolders, setShowAllSubFolders }: any) => {
+const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView, setIsMasterModalOpen, masterPassword, handleImport, handleExport, setToast, subView, setSubView, showAllFolders, setShowAllFolders, showAllSubFolders, setShowAllSubFolders }: any) => {
   const [newF, setNewF] = useState('');
   const [newSub, setNewSub] = useState('');
   const [selectedRoot, setSelectedRoot] = useState('');
@@ -1068,7 +1094,7 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
   const renderMainList = () => (
     <div className="space-y-4 animate-in fade-in">
       <section className={`rounded-[2.5rem] p-8 border text-center ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200 shadow-lg'}`}>
-        <h4 className="text-xl font-black">{t.appTitle}</h4>
+        <h4 className={`text-xl font-black ${!isDark ? 'text-black' : ''}`}>{t.appTitle}</h4>
         <p className="text-[11px] text-gray-500 italic">"{t.safeQuote}"</p>
         <div className="h-px w-full my-4 bg-white/5" />
         <p className="text-[9px] font-bold text-gray-500 uppercase">{t.version}</p>
@@ -1081,11 +1107,11 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
           { id: 'theme', icon: <Icons.Monitor size={18}/>, label: t.themeLabel }, 
           { id: 'language', icon: <Icons.Globe size={18}/>, label: t.languageLabel }].map((item) => (
           <button key={item.id} onClick={() => setSubView(item.id as any)} className="w-full flex items-center justify-between p-5 hover:bg-[#4CAF50]/5 transition-all">
-            <div className="flex items-center gap-4"><div className="text-[#4CAF50]">{item.icon}</div><span className="text-sm font-bold">{item.label}</span></div><Icons.ChevronRight size={18} className="text-gray-600" />
+            <div className="flex items-center gap-4"><div className="text-[#4CAF50]">{item.icon}</div><span className={`text-sm font-bold ${!isDark ? 'text-black' : ''}`}>{item.label}</span></div><Icons.ChevronRight size={18} className="text-gray-600" />
           </button>
         ))}
       </div>
-      <button onClick={handleLock} className={`w-full font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-3xl border active:scale-95 transition-all ${isDark ? 'bg-white/5 text-gray-500 border-white/5' : 'bg-gray-200 text-gray-600 border-gray-300 shadow-sm'}`}>LOG OUT / LOCK APP</button>
+      <button onClick={handleLock} className={`w-full font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-3xl border active:scale-95 transition-all ${isDark ? 'bg-white/5 text-gray-500 border-white/5' : 'bg-gray-200 text-black border-gray-300 shadow-sm'}`}>LOG OUT / LOCK APP</button>
     </div>
   );
 
@@ -1096,8 +1122,8 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
           <section className={`rounded-[2.5rem] p-6 border shadow-xl ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
             <button onClick={() => setIsMasterModalOpen(true)} className="w-full bg-[#4CAF50] text-white py-4 rounded-2xl font-bold mb-6 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"><Icons.Shield size={18}/> {t.createMasterPass}</button>
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <button onClick={handleExport} className={`flex flex-col items-center justify-center p-6 border rounded-[2.5rem] active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}><Icons.Upload className="text-[#4CAF50] mb-2" size={24} /><span className="text-[9px] font-black uppercase text-center">{t.exportDb}</span></button>
-              <label className={`flex flex-col items-center justify-center p-6 border rounded-[2.5rem] cursor-pointer active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}><Icons.Download className="text-[#4CAF50] mb-2" size={24} /><span className="text-[9px] font-black uppercase text-center">{t.importDb}</span><input type="file" accept=".vpass" onChange={handleImport} className="hidden" /></label>
+              <button onClick={handleExport} className={`flex flex-col items-center justify-center p-6 border rounded-[2.5rem] active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}><Icons.Upload className="text-[#4CAF50] mb-2" size={24} /><span className={`text-[9px] font-black uppercase text-center ${!isDark ? 'text-black' : ''}`}>{t.exportDb}</span></button>
+              <label className={`flex flex-col items-center justify-center p-6 border rounded-[2.5rem] cursor-pointer active:scale-95 transition-all ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}><Icons.Download className="text-[#4CAF50] mb-2" size={24} /><span className={`text-[9px] font-black uppercase text-center ${!isDark ? 'text-black' : ''}`}>{t.importDb}</span><input type="file" accept=".vpass" onChange={handleImport} className="hidden" /></label>
             </div>
             <button onClick={() => { if(confirm("Xác nhận xóa sạch toàn bộ dữ liệu?")) { localStorage.clear(); window.location.reload(); } }} className="w-full bg-red-500/10 text-red-500 font-black text-[10px] uppercase tracking-widest py-5 rounded-3xl border border-red-500/20 active:scale-95 transition-all">{t.resetVault}</button>
           </section>
@@ -1108,13 +1134,13 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
           <section className={`rounded-[2.5rem] p-6 border shadow-xl ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
             <h3 className="text-[10px] font-black uppercase text-[#4CAF50] tracking-widest mb-4 flex items-center gap-2"><Icons.Folder size={14}/> THƯ MỤC</h3>
             <div className="flex gap-2 mb-4">
-              <input value={newF} onChange={e => setNewF(e.target.value)} placeholder="Tạo thư mục" className={`flex-1 border rounded-2xl px-4 py-3 outline-none transition-all ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-gray-50 border-gray-200'}`} />
+              <input value={newF} onChange={e => setNewF(e.target.value)} placeholder="Tạo thư mục" className={`flex-1 border rounded-2xl px-4 py-3 outline-none transition-all text-base ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-black'}`} />
               <button onClick={() => { if(newF) { setSettings({...settings, folders: [...settings.folders, newF]}); setNewF(''); } }} className="bg-[#4CAF50] text-white p-4 rounded-2xl active:scale-90 transition-transform"><Icons.Plus size={20}/></button>
             </div>
             <div className="space-y-2">
               {(showAllFolders ? settings.folders : settings.folders.slice(0, 4)).map((f: string) => (
                 <div key={f} className={`flex items-center justify-between p-4 border rounded-2xl transition-colors ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
-                  <span className="text-xs font-bold truncate max-w-[200px]">{f}</span>
+                  <span className={`text-xs font-bold truncate max-w-[200px] ${!isDark ? 'text-black' : ''}`}>{f}</span>
                   <button onClick={() => { if(confirm("Xóa thư mục này?")) setSettings({...settings, folders: settings.folders.filter(x => x !== f)}); }} className="text-gray-600 hover:text-red-500 transition-colors"><Icons.Trash2 size={16}/></button>
                 </div>
               ))}
@@ -1127,17 +1153,17 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
           </section>
           <section className={`rounded-[2.5rem] p-6 border shadow-xl ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
             <h3 className="text-[10px] font-black uppercase text-[#4CAF50] tracking-widest mb-4 flex items-center gap-2"><Icons.Network size={14}/> TẠO THƯ MỤC CON</h3>
-            <select value={selectedRoot} onChange={e => setSelectedRoot(e.target.value)} className={`w-full border rounded-2xl py-3 px-4 outline-none mb-4 transition-all ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-gray-50 border-gray-200'}`}><option value="">-- Thư mục --</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select>
+            <select value={selectedRoot} onChange={e => setSelectedRoot(e.target.value)} className={`w-full border rounded-2xl py-3 px-4 outline-none mb-4 transition-all text-base ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-black'}`}><option value="">-- Thư mục --</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select>
             {selectedRoot && (
               <div className="animate-in fade-in space-y-4">
                 <div className="flex gap-2">
-                  <input value={newSub} onChange={e => setNewSub(e.target.value)} placeholder="Tên thư mục con" className={`flex-1 border rounded-2xl px-4 py-3 outline-none ${isDark ? 'bg-black/40 border-white/10' : 'bg-gray-50'}`} />
+                  <input value={newSub} onChange={e => setNewSub(e.target.value)} placeholder="Tên thư mục con" className={`flex-1 border rounded-2xl px-4 py-3 outline-none text-base ${isDark ? 'bg-black/40 border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-black'}`} />
                   <button onClick={() => { if(newSub) { const currentSubs = settings.subFolders[selectedRoot] || []; setSettings({...settings, subFolders: {...settings.subFolders, [selectedRoot]: [...currentSubs, newSub]}}); setNewSub(''); } }} className="bg-[#4CAF50] text-white p-4 rounded-2xl"><Icons.Plus size={20}/></button>
                 </div>
                 <div className="space-y-2">
                   {(showAllSubFolders ? (settings.subFolders[selectedRoot] || []) : (settings.subFolders[selectedRoot] || []).slice(0, 4)).map((s: string) => (
                     <div key={s} className={`flex items-center justify-between p-3 border rounded-2xl ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
-                      <span className="text-[11px] font-bold">{s}</span>
+                      <span className={`text-[11px] font-bold ${!isDark ? 'text-black' : ''}`}>{s}</span>
                       <button onClick={() => setSettings({...settings, subFolders: {...settings.subFolders, [selectedRoot]: settings.subFolders[selectedRoot].filter(x => x !== s)}})} className="text-gray-600 hover:text-red-500"><Icons.Trash2 size={16}/></button>
                     </div>
                   ))}
@@ -1163,10 +1189,19 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
                 { label: 'Vân tay / FaceID', key: 'biometricEnabled' }
               ].map(opt => (
                 <div key={opt.key} className="flex items-center justify-between">
-                  <span className="text-xs font-bold leading-relaxed">{opt.label}</span>
+                  <span className={`text-xs font-bold leading-relaxed ${!isDark ? 'text-black' : ''}`}>{opt.label}</span>
                   <button onClick={async () => {
                     if(opt.key === 'biometricEnabled' && !settings.biometricEnabled) {
-                      try { await SecurityService.enableBiometric("vault_key"); setSettings({...settings, biometricEnabled: true}); } catch(err) { setToast(t.biometricError); }
+                      try { 
+                        const available = await SecurityService.isBiometricAvailable();
+                        if (!available) {
+                          setToast("Thiết bị không hỗ trợ sinh trắc học");
+                          return;
+                        }
+                        await SecurityService.enableBiometric(masterPassword || "vault_key"); 
+                        setSettings({...settings, biometricEnabled: true}); 
+                        setToast("Đã thiết lập sinh trắc học");
+                      } catch(err) { setToast(t.biometricError); }
                     } else { setSettings({...settings, [opt.key]: !(settings as any)[opt.key]}); }
                   }} className={`w-12 h-6 rounded-full relative transition-all ${ (settings as any)[opt.key] ? 'bg-[#4CAF50]' : 'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${(settings as any)[opt.key] ? 'right-1' : 'left-1'}`} /></button>
                 </div>
@@ -1230,10 +1265,10 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             type={type} 
             value={value} 
             onChange={e => setLocalData({...localData, [field]: e.target.value})} 
-            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-gray-900 focus:border-[#4CAF50]/50'}`} 
+            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} 
             placeholder={placeholder} 
           />
-          {!isView && <button type="button" onClick={() => copy(value)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#4CAF50] p-2 transition-colors"><Icons.Copy size={14}/></button>}
+          {(value && (isView || true)) && <button type="button" onClick={() => copy(value)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#4CAF50] p-2 transition-colors"><Icons.Copy size={14}/></button>}
         </div>
       </div>
     );
@@ -1249,8 +1284,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         <div className="max-w-md mx-auto space-y-5">
           {localData.type === 'login' && (
             <>
-              {(!isView || (localData.group && localData.group !== '---')) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
-              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
+              {(!isView || (localData.group && localData.group !== '---')) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
+              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
               {copyableField(t.username, 'username', localData.username || "", "text", t.usernameHint)}
               {copyableField(t.password, 'password', localData.password || "", "password")}
               
@@ -1291,7 +1326,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   {(!isView || localData.notes) && (
                     <div className="space-y-1">
                       <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
-                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'}`} />
+                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
                     </div>
                   )}
                 </div>
@@ -1300,12 +1335,12 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
           {localData.type === 'card' && (
             <>
-              {(!isView || localData.title) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.title}</label><select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'} ${!localData.title ? 'text-gray-400' : ''}`}><option value="">{t.chooseBank}</option>{(settings.subFolders['Ngân hàng'] || []).filter(b => !WALLET_LIST.includes(b)).map(b => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>}
+              {(!isView || localData.title) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.title}</label><select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.title ? 'text-gray-400' : ''}`}><option value="">{t.chooseBank}</option>{(settings.subFolders['Ngân hàng'] || []).filter(b => !WALLET_LIST.includes(b)).map(b => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>}
               {!WALLET_LIST.includes(localData.title) ? (
                 <>
                   {(!isView || localData.cardType || localData.expiryMonth) && (
                     <div className="space-y-5">
-                      {(!isView || localData.cardType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.cardType}</label><select disabled={isView} value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'} ${!localData.cardType ? 'text-gray-400' : ''}`}><option value="" disabled>{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>}
+                      {(!isView || localData.cardType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.cardType}</label><select disabled={isView} value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.cardType ? 'text-gray-400' : ''}`}><option value="" disabled>{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>}
                       {copyableField(t.expiryLabel, 'expiryMonth', localData.expiryMonth || "", "text", t.expiryHint)}
                     </div>
                   )}
@@ -1347,7 +1382,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
           {localData.type === 'document' && (
             <>
-              {(!isView || localData.documentType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
+              {(!isView || localData.documentType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
               {localData.documentType && (
                 <div className="space-y-5 animate-in fade-in">
                   {/* Common document header fields */}
@@ -1364,7 +1399,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                         {(!isView || localData.gender) && (
                           <div className="space-y-1">
                             <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Giới tính</label>
-                            <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-sm ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200'}`}>
+                            <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}>
                               <option value="">--</option>
                               <option value="Nam">Nam</option>
                               <option value="Nữ">Nữ</option>
