@@ -301,10 +301,24 @@ export class SecurityService {
     );
   }
 
-  static async enableBiometric(masterPassword: string): Promise<void> {
-    if (!await this.isBiometricAvailable()) throw new Error("Biometrics not supported");
-    const encrypted = await this.encryptVault(masterPassword, "BIO_INTERNAL_KEY");
-    localStorage.setItem('securepass_biometric_vault', JSON.stringify(encrypted));
+  static async setupBiometric(masterPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const available = await this.isBiometricAvailable();
+      if (!available) return { success: false, error: 'NOT_SUPPORTED' };
+      
+      // Encrypt the master password with a fixed internal key
+      // This allows the biometric unlock to "retrieve" the master password
+      const encrypted = await this.encryptVault(masterPassword, "BIO_INTERNAL_KEY");
+      localStorage.setItem('securepass_biometric_vault', JSON.stringify(encrypted));
+      return { success: true };
+    } catch (e) {
+      console.error("Biometric Setup Error", e);
+      return { success: false, error: 'SETUP_FAILED' };
+    }
+  }
+
+  static async disableBiometric(): Promise<void> {
+    localStorage.removeItem('securepass_biometric_vault');
   }
 
   static async authenticateBiometric(): Promise<string> {

@@ -748,7 +748,7 @@ const App: React.FC = () => {
           )}
         </div>
       )}
-      {isMasterModalOpen && <MasterPasswordModal t={t} isDark={isDark} onClose={() => setIsMasterModalOpen(false)} setMasterPassword={async (np: string, kf: any) => { 
+      {isMasterModalOpen && <MasterPasswordModal t={t} isDark={isDark} settings={settings} setSettings={setSettings} onClose={() => setIsMasterModalOpen(false)} setMasterPassword={async (np: string, kf: any) => { 
         localStorage.setItem('securepass_master_hash', JSON.stringify(kf)); 
         // Always encrypt current entries (empty if locked) with new password
         const enc = await SecurityService.encryptVault(JSON.stringify(entries), np); 
@@ -883,9 +883,9 @@ const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCa
               <h3 className="text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2 px-1 text-gray-500"><Icons.Shield size={12}/> {t.typesHeader}</h3>
               <div className="grid grid-cols-2 gap-3">
                 {['login', 'card', 'document', 'contact'].map(id => (
-                  <button key={id} onClick={() => setActiveCategory({ type: 'type', val: id })} className={`flex flex-col items-center justify-center p-5 rounded-3xl border transition-all active:scale-95 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200'}`}>
+                  <button key={id} onClick={() => setActiveCategory({ type: 'type', val: id })} className={`flex flex-col items-center justify-center p-5 rounded-3xl border transition-all active:scale-95 ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200 shadow-sm'}`}>
                     <div className="text-[#4CAF50] mb-3">{id === 'login' ? <Icons.User size={26}/> : id === 'card' ? <Icons.CreditCard size={26}/> : id === 'contact' ? <Icons.Smartphone size={26}/> : <Icons.FileText size={26}/>}</div>
-                    <span className="text-[11px] font-black uppercase tracking-widest text-white">{t[`type${id.charAt(0).toUpperCase() + id.slice(1)}` as keyof typeof t] || id}</span>
+                    <span className={`text-[11px] font-black uppercase tracking-widest ${isDark ? 'text-white' : 'text-[#4CAF50]'}`}>{t[`type${id.charAt(0).toUpperCase() + id.slice(1)}` as keyof typeof t] || id}</span>
                   </button>
                 ))}
               </div>
@@ -956,7 +956,7 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
   );
 };
 
-const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => {
+const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, settings, setSettings }: any) => {
   const [newMP, setNewMP] = useState('');
   const [confirmMP, setConfirmMP] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -1003,15 +1003,13 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword }: any) => 
   };
 
   const handleEnableBio = async () => {
-    try {
-      const available = await SecurityService.isBiometricAvailable();
-      if (!available) {
-        onClose();
-        return;
+    const result = await SecurityService.setupBiometric(newMP);
+    if (result.success) {
+      if (setSettings && settings) {
+        setSettings({ ...settings, biometricEnabled: true });
       }
-      await SecurityService.enableBiometric(newMP);
       onClose();
-    } catch (err) {
+    } else {
       onClose();
     }
   };
@@ -1191,18 +1189,23 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
                 <div key={opt.key} className="flex items-center justify-between">
                   <span className={`text-xs font-bold leading-relaxed ${!isDark ? 'text-black' : ''}`}>{opt.label}</span>
                   <button onClick={async () => {
-                    if(opt.key === 'biometricEnabled' && !settings.biometricEnabled) {
-                      try { 
-                        const available = await SecurityService.isBiometricAvailable();
-                        if (!available) {
-                          setToast("Thiết bị không hỗ trợ sinh trắc học");
-                          return;
+                    if(opt.key === 'biometricEnabled') {
+                      if (!settings.biometricEnabled) {
+                        const result = await SecurityService.setupBiometric(masterPassword);
+                        if (result.success) {
+                          setSettings({...settings, biometricEnabled: true});
+                          setToast("Đã thiết lập sinh trắc học");
+                        } else {
+                          setToast(result.error === 'NOT_SUPPORTED' ? "Thiết bị không hỗ trợ sinh trắc học" : t.biometricError);
                         }
-                        await SecurityService.enableBiometric(masterPassword || "vault_key"); 
-                        setSettings({...settings, biometricEnabled: true}); 
-                        setToast("Đã thiết lập sinh trắc học");
-                      } catch(err) { setToast(t.biometricError); }
-                    } else { setSettings({...settings, [opt.key]: !(settings as any)[opt.key]}); }
+                      } else {
+                        await SecurityService.disableBiometric();
+                        setSettings({...settings, biometricEnabled: false});
+                        setToast("Đã tắt sinh trắc học");
+                      }
+                    } else { 
+                      setSettings({...settings, [opt.key]: !(settings as any)[opt.key]}); 
+                    }
                   }} className={`w-12 h-6 rounded-full relative transition-all ${ (settings as any)[opt.key] ? 'bg-[#4CAF50]' : 'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${(settings as any)[opt.key] ? 'right-1' : 'left-1'}`} /></button>
                 </div>
               ))}
@@ -1394,19 +1397,18 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     
                     {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên in hoa...")}
                     
-                    <div className="grid grid-cols-2 gap-3">
-                        {copyableField("Ngày sinh", 'dob', localData.dob || "", "date")}
-                        {(!isView || localData.gender) && (
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Giới tính</label>
-                            <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}>
-                              <option value="">--</option>
-                              <option value="Nam">Nam</option>
-                              <option value="Nữ">Nữ</option>
-                            </select>
-                          </div>
-                        )}
-                    </div>
+                    {copyableField("Ngày sinh", 'dob', localData.dob || "", "date")}
+                    
+                    {(!isView || localData.gender) && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Giới tính</label>
+                        <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}>
+                          <option value="">--</option>
+                          <option value="Nam">Nam</option>
+                          <option value="Nữ">Nữ</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Residence and specific fields by type */}
@@ -1421,34 +1423,26 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     <div className="space-y-4">
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ...")}
                       {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Nơi đăng ký KCB...")}
-                      <div className="grid grid-cols-2 gap-3">
-                        {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
-                        {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
-                      </div>
+                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
+                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
                     </div>
                   )}
 
                   {localData.documentType === 'driving_license' && (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        {copyableField(t.classLabel, 'class', localData.class || "", "text", "Hạng...")}
-                        {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cơ quan cấp...")}
-                      </div>
+                      {copyableField(t.classLabel, 'class', localData.class || "", "text", "Hạng...")}
+                      {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cơ quan cấp...")}
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
-                      <div className="grid grid-cols-2 gap-3">
-                        {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
-                        {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
-                      </div>
+                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
+                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
                     </div>
                   )}
 
                   {localData.documentType === 'passport' && (
                     <div className="space-y-4">
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="col-span-1">{copyableField(t.passportType, 'passportType', localData.passportType || "", "text", "P")}</div>
-                        <div className="col-span-2">{copyableField(t.nationality, 'nationality', localData.nationality || "", "text", "VIỆT NAM")}</div>
-                      </div>
+                      {copyableField(t.passportType, 'passportType', localData.passportType || "", "text", "P")}
+                      {copyableField(t.nationality, 'nationality', localData.nationality || "", "text", "VIỆT NAM")}
                       {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
                     </div>
                   )}
