@@ -451,10 +451,11 @@ const App: React.FC = () => {
   const t = translations[settings.language] || translations.vi;
 
   useEffect(() => {
-    if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_id')) {
-      setTimeout(() => handleBiometricLogin(), 800);
+    if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_vault')) {
+      const timer = setTimeout(() => handleBiometricLogin(), 800);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isLocked, settings.biometricEnabled]);
 
   useEffect(() => {
     if (isLocked || !settings.autoLockEnabled) return;
@@ -764,10 +765,8 @@ const App: React.FC = () => {
 const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => {
   const hasKeyFile = uploadedKeyFile || isKeyFileRemembered;
   const hasRememberedPass = !!localStorage.getItem('securepass_remembered_mp');
+  const hasBioSetup = !!localStorage.getItem('securepass_biometric_vault');
   
-  // Show password field if it's the first time/device change (no remembered password)
-  // OR if a new key file is uploaded (to verify it)
-  // OR if we are verifying an import
   const showPasswordField = !hasRememberedPass || !!uploadedKeyFile || isVerifyingImport;
 
   return (
@@ -780,6 +779,18 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-4">
+            {/* Move Key File Selection UP */}
+            <div className="space-y-3">
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${uploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
+                <Icons.Database size={24} className={uploadedKeyFile ? 'text-[#4CAF50]' : ''} />
+                <span className={`text-[10px] font-black uppercase tracking-wider ${uploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{uploadedKeyFile ? "Đã nhận diện File Khóa" : t.chooseKeyFile}</span>
+                <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileSelection} />
+              </label>
+              {!hasKeyFile && (
+                <p className="text-[10px] text-red-500 font-bold text-center animate-pulse">Vui lòng chọn File Khóa để tiếp tục</p>
+              )}
+            </div>
+
             {showPasswordField ? (
               <div className="relative">
                 <input 
@@ -792,39 +803,27 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
                 />
               </div>
             ) : (
-              hasKeyFile && (
+              (!hasRememberedPass && !hasBioSetup && hasKeyFile) && (
                 <div className={`p-4 rounded-2xl border flex items-center gap-3 ${isDark ? 'bg-[#4CAF50]/5 border-[#4CAF50]/20' : 'bg-[#4CAF50]/5 border-[#4CAF50]/10'}`}>
                   <div className="w-10 h-10 bg-[#4CAF50] rounded-xl flex items-center justify-center shadow-lg shadow-[#4CAF50]/20">
                     <Icons.FileCheck className="text-white" size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-black uppercase text-[#4CAF50] truncate">Đã chọn File Khóa</p>
+                    <p className="text-[11px] font-black uppercase text-[#4CAF50] truncate">Thiết bị đã được nhận diện</p>
                   </div>
                 </div>
               )
             )}
           </div>
 
-          <button type="submit" disabled={isUnlocking} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+          <button type="submit" disabled={isUnlocking || !hasKeyFile || (!masterPassword && showPasswordField)} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
             {isUnlocking ? <Icons.Loader2 className="animate-spin" size={18} /> : <Icons.Unlock size={18} />} 
             {isUnlocking ? 'Đang xác thực...' : t.unlockVault}
           </button>
           
-          {!isVerifyingImport && (
-            <button type="button" disabled={isUnlocking} onClick={handleBiometricLogin} className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 border transition-all text-sm disabled:opacity-50 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-gray-100 border-gray-200 text-black'}`}><Icons.Fingerprint size={22} className="text-[#4CAF50]" /> {t.biometricUnlock}</button>
-          )}
-          
-          <div className="pt-4 space-y-4 text-center">
-            <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${uploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
-              <Icons.Database size={24} className={uploadedKeyFile ? 'text-[#4CAF50]' : ''} />
-              <span className={`text-xs font-bold uppercase ${uploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{uploadedKeyFile ? "Thay đổi File Khóa" : t.chooseKeyFile}</span>
-              <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileSelection} />
-            </label>
-            
-            <div className="mt-4">
-              <p className="text-[10px] uppercase font-bold text-gray-500">{t.noMasterPassYet}</p>
-              <button type="button" onClick={() => setIsMasterModalOpen(true)} className="text-[#4CAF50] text-xs font-black mt-1 uppercase tracking-wider">{t.createOne}</button>
-            </div>
+          <div className="pt-2 text-center">
+            <p className="text-[10px] uppercase font-bold text-gray-500">{t.noMasterPassYet}</p>
+            <button type="button" onClick={() => setIsMasterModalOpen(true)} className="text-[#4CAF50] text-xs font-black mt-1 uppercase tracking-wider">{t.createOne}</button>
           </div>
         </form>
       </div>

@@ -305,9 +305,36 @@ export class SecurityService {
     try {
       const available = await this.isBiometricAvailable();
       if (!available) return { success: false, error: 'NOT_SUPPORTED' };
+
+      // Generate a random challenge
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const userID = new Uint8Array(16);
+      window.crypto.getRandomValues(userID);
+
+      const createOptions: PublicKeyCredentialCreationOptions = {
+        challenge,
+        rp: { name: "SecurePass", id: window.location.hostname },
+        user: {
+          id: userID,
+          name: "user@securepass",
+          displayName: "SecurePass User"
+        },
+        pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+        authenticatorSelection: {
+          authenticatorAttachment: "platform",
+          userVerification: "required",
+          residentKey: "required"
+        },
+        timeout: 60000,
+        attestation: "none"
+      };
+
+      const credential = await navigator.credentials.create({ publicKey: createOptions });
+      if (!credential) return { success: false, error: 'CREDENTIAL_FAILED' };
       
       // Encrypt the master password with a fixed internal key
-      // This allows the biometric unlock to "retrieve" the master password
       const encrypted = await this.encryptVault(masterPassword, "BIO_INTERNAL_KEY");
       localStorage.setItem('securepass_biometric_vault', JSON.stringify(encrypted));
       return { success: true };
@@ -324,6 +351,20 @@ export class SecurityService {
   static async authenticateBiometric(): Promise<string> {
     const bioVault = localStorage.getItem('securepass_biometric_vault');
     if (!bioVault) throw new Error("Biometrics not setup");
+
+    const challenge = new Uint8Array(32);
+    window.crypto.getRandomValues(challenge);
+
+    const getOptions: PublicKeyCredentialRequestOptions = {
+      challenge,
+      rpId: window.location.hostname,
+      userVerification: "required",
+      timeout: 60000
+    };
+
+    const assertion = await navigator.credentials.get({ publicKey: getOptions });
+    if (!assertion) throw new Error("Biometric verification failed");
+
     const decrypted = await this.decryptVault(JSON.parse(bioVault), "BIO_INTERNAL_KEY");
     if (!decrypted) throw new Error("Biometric decryption failed");
     return decrypted;
