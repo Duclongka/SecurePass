@@ -556,19 +556,19 @@ const App: React.FC = () => {
           setIsVerifyingImport(false);
           setToast(t.success);
           
-          if (pendingImportData.header) {
-             const kf = {
-               type: 'MASTER_KEY_FILE',
-               version: '3.0.0',
-               salt: pendingImportData.header.salt,
-               iterations: pendingImportData.header.iterations,
-               authHash: pendingImportData.header.authHash || '',
-               createdAt: Date.now()
-             };
-             localStorage.setItem('securepass_master_hash', JSON.stringify(kf));
-             // Also remember this password for the device
-             localStorage.setItem('securepass_remembered_mp', passToUse);
-          }
+          // Rebuild MASTER_KEY_FILE from import results
+          const kf = {
+            type: 'MASTER_KEY_FILE',
+            version: '3.0.0',
+            salt: result.salt || pendingImportData.header.salt,
+            iterations: pendingImportData.header.iterations,
+            authHash: result.authHash || '',
+            createdAt: Date.now()
+          };
+          localStorage.setItem('securepass_master_hash', JSON.stringify(kf));
+          // Also remember this password for the device
+          localStorage.setItem('securepass_remembered_mp', passToUse);
+          setIsKeyFileRemembered(true);
           return;
         } else {
           throw new Error("Import failed");

@@ -42,7 +42,17 @@ export class SecurityService {
           const salt = keyFile.salt;
           const iterations = Number(keyFile.iterations) || SecurityService.ITERATIONS;
           const passwordWA = CryptoJS.enc.Utf8.parse(password);
-          const saltWA = CryptoJS.enc.Hex.parse(salt);
+          
+          let saltWA;
+          try {
+            if (/^[0-9a-fA-F]+$/.test(salt)) {
+              saltWA = CryptoJS.enc.Hex.parse(salt);
+            } else {
+              saltWA = CryptoJS.enc.Base64.parse(salt);
+            }
+          } catch (e) {
+            saltWA = CryptoJS.enc.Base64.parse(salt);
+          }
           
           const key = CryptoJS.PBKDF2(passwordWA, saltWA, {
             keySize: 256 / 32,
@@ -120,7 +130,7 @@ export class SecurityService {
     });
   }
 
-  static async importVault(backupFileContent: string, currentPassword: string): Promise<{ success: boolean; data?: any; error?: string; needsPassword?: boolean; backupPassword?: string }> {
+  static async importVault(backupFileContent: string, currentPassword: string): Promise<{ success: boolean; data?: any; error?: string; needsPassword?: boolean; authHash?: string; salt?: string }> {
     return new Promise((resolve) => {
       setTimeout(async () => {
         try {
@@ -135,7 +145,36 @@ export class SecurityService {
           try {
             const decrypted = await this.decryptVault(backup.data, currentPassword);
             if (decrypted) {
-              return resolve({ success: true, data: JSON.parse(decrypted) });
+              // Compute authHash for the new device to establish master key
+              const salt = backup.header.salt;
+              const iterations = backup.header.iterations || SecurityService.ITERATIONS;
+              const passwordWA = CryptoJS.enc.Utf8.parse(currentPassword);
+              
+              let saltWA;
+              try {
+                if (/^[0-9a-fA-F]+$/.test(salt)) {
+                  saltWA = CryptoJS.enc.Hex.parse(salt);
+                } else {
+                  saltWA = CryptoJS.enc.Base64.parse(salt);
+                }
+              } catch (e) {
+                saltWA = CryptoJS.enc.Base64.parse(salt);
+              }
+
+              const key = CryptoJS.PBKDF2(passwordWA, saltWA, {
+                keySize: 256 / 32,
+                iterations: iterations,
+                hasher: CryptoJS.algo.SHA256
+              });
+              
+              const authHash = CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex);
+
+              return resolve({ 
+                success: true, 
+                data: JSON.parse(decrypted),
+                authHash,
+                salt
+              });
             }
           } catch (e) {
             // If failed, it might be a different password
