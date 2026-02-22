@@ -27,6 +27,8 @@ export interface PasswordEntry {
   cardHolder?: string;
   cardType?: string;
   atmPin?: string; // New field for ATM withdrawal password
+  customerSince?: string; // New field for Card
+  cvv?: string; // New field for Card
   qrImage?: string; // Base64 image for account QR
   nickname?: string;
   fullName?: string;
@@ -55,6 +57,7 @@ export interface PasswordEntry {
   passportType?: string;
   passportCode?: string;
   placeOfBirth?: string;
+  issuePlace?: string; // New field for ID Card
   
   // Document Images
   frontImage?: string;

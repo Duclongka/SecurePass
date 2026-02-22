@@ -5,6 +5,7 @@ import { PasswordEntry, AppView, SettingsState, EntryType } from './types';
 import { generatePassword, calculateStrength, getStrengthColor } from './utils/passwordUtils';
 import { SecurityService } from './services/SecurityService';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
+import { ocrService } from './src/services/ocrService';
 
 const translations = {
   en: {
@@ -455,6 +456,7 @@ const App: React.FC = () => {
     }
   });
 
+  const [loginError, setLoginError] = useState<string | null>(null);
   const isDark = settings.theme === 'dark';
   const t = translations[settings.language] || translations.vi;
 
@@ -620,6 +622,7 @@ const App: React.FC = () => {
 
       const result = await SecurityService.verifyAccess(passToUse, keyFileToUse);
       if (!result.success) {
+        setLoginError(t.wrongPassword);
         setToast(t.wrongPassword);
         return;
       }
@@ -645,8 +648,10 @@ const App: React.FC = () => {
       setMasterPassword(passToUse);
       setSettings(prev => ({ ...prev, hasMasterPassword: true }));
       localStorage.removeItem('securepass_force_password');
+      setLoginError(null);
     } catch (err) {
       console.error("Login error", err);
+      setLoginError(t.wrongPassword);
       setToast(t.wrongPassword);
     } finally {
       setIsUnlocking(false);
@@ -656,9 +661,18 @@ const App: React.FC = () => {
   const handleBiometricLogin = async () => {
     try {
       const decryptedPass = await SecurityService.authenticateBiometric();
-      if (decryptedPass) handleLogin(undefined, decryptedPass);
+      if (decryptedPass) {
+        handleLogin(undefined, decryptedPass);
+      } else {
+        localStorage.setItem('securepass_force_password', 'true');
+        setIsLocked(true);
+        setView('login');
+      }
     } catch (err: any) {
       setToast(t.biometricError);
+      localStorage.setItem('securepass_force_password', 'true');
+      setIsLocked(true);
+      setView('login');
     }
   };
 
@@ -725,6 +739,12 @@ const App: React.FC = () => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setToast(t.copySuccess);
+
+    if (settings.clearClipboardEnabled) {
+      setTimeout(() => {
+        navigator.clipboard.writeText('');
+      }, settings.clearClipboardSeconds * 1000);
+    }
   };
 
   const deleteEntry = (id: string) => {
@@ -753,7 +773,7 @@ const App: React.FC = () => {
       className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-black'}`}
     >
       {isLocked ? (
-        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isKeyFileRemembered={isKeyFileRemembered} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} />
+        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isKeyFileRemembered={isKeyFileRemembered} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} loginError={loginError} />
       ) : (
         <div className="flex-1 flex flex-col relative overflow-hidden h-full">
           {view === 'vault' && <VaultScreen t={t} isDark={isDark} entries={entries} searchQuery={searchQuery} setSearchQuery={setSearchQuery} activeCategory={activeCategory} setActiveCategory={setActiveCategory} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} settings={settings} setView={setView} />}
@@ -779,7 +799,7 @@ const App: React.FC = () => {
           </nav>
 
           {(isAdding || isEditing || selectedEntry) && (
-            <EntryModal t={t} isDark={isDark} settings={settings} mode={isEditing ? 'edit' : isAdding ? 'add' : 'view'} entry={isEditing || selectedEntry || undefined} addType={isAdding || undefined} onClose={() => { setIsAdding(null); setIsEditing(null); setSelectedEntry(null); }} onSave={(d: any) => { if (isAdding) { const n = { ...d, id: Math.random().toString(36).substring(2, 9), createdAt: Date.now(), strength: calculateStrength(d.password || ''), isFrequent: true }; const up = [n, ...entries]; setEntries(up); saveVault(up); setIsAdding(null); } else { const up = entries.map(e => e.id === d.id ? { ...d, strength: calculateStrength(d.password || '') } : e); setEntries(up); saveVault(up); setIsEditing(null); } }} copy={copy} setIsEditing={setIsEditing} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} />
+            <EntryModal t={t} isDark={isDark} settings={settings} mode={isEditing ? 'edit' : isAdding ? 'add' : 'view'} entry={isEditing || selectedEntry || undefined} addType={isAdding || undefined} onClose={() => { setIsAdding(null); setIsEditing(null); setSelectedEntry(null); }} onSave={(d: any) => { if (isAdding) { const n = { ...d, id: Math.random().toString(36).substring(2, 9), createdAt: Date.now(), strength: calculateStrength(d.password || ''), isFrequent: true }; const up = [n, ...entries]; setEntries(up); saveVault(up); setIsAdding(null); } else { const up = entries.map(e => e.id === d.id ? { ...d, strength: calculateStrength(d.password || '') } : e); setEntries(up); saveVault(up); setIsEditing(null); } }} copy={copy} setIsEditing={setIsEditing} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} setToast={setToast} />
           )}
         </div>
       )}
@@ -796,7 +816,7 @@ const App: React.FC = () => {
   );
 };
 
-const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => {
+const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking, loginError }: any) => {
   const [showKeyError, setShowKeyError] = useState(false);
   const hasUploadedKeyFile = !!uploadedKeyFile;
   const hasRememberedPass = !!localStorage.getItem('securepass_remembered_mp');
@@ -807,7 +827,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
   // OR if a new key file is uploaded (to verify it)
   // OR if we are verifying an import
   // OR if we are forced to use password (after change/new device)
-  const showPasswordField = !hasRememberedPass || hasUploadedKeyFile || isVerifyingImport || forcePassword;
+  const showPasswordField = true; // Always show password for 2FA (Key File + Master Password)
 
   const onUnlockClick = (e: React.FormEvent) => {
     e.preventDefault();
@@ -842,15 +862,20 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
             </div>
 
             {showPasswordField ? (
-              <div className="relative">
-                <input 
-                  autoFocus 
-                  type="password" 
-                  placeholder={t.masterPassword} 
-                  value={masterPassword} 
-                  onChange={(e) => setMasterPassword(e.target.value)} 
-                  className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-black focus:border-[#4CAF50]/50'}`} 
-                />
+              <div className="space-y-4">
+                <div className="relative">
+                  <input 
+                    autoFocus 
+                    type="password" 
+                    placeholder={t.masterPassword} 
+                    value={masterPassword} 
+                    onChange={(e) => setMasterPassword(e.target.value)} 
+                    className={`w-full border rounded-2xl py-4 px-6 outline-none transition-all text-base ${isDark ? 'bg-[#1a1a1a] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-gray-100 border-gray-200 text-black focus:border-[#4CAF50]/50'}`} 
+                  />
+                </div>
+                {loginError && (
+                  <p className="text-[10px] text-red-500 font-bold text-center">Mật khẩu hoặc File Khóa không chính xác</p>
+                )}
               </div>
             ) : (
               (!hasRememberedPass && !hasBioSetup && isKeyFileRemembered) && (
@@ -889,7 +914,17 @@ const VaultScreen = ({ t, isDark, entries, searchQuery, setSearchQuery, activeCa
     if (activeCategory) list = list.filter((e: any) => activeCategory.type === 'type' ? e.type === activeCategory.val : e.group === activeCategory.val);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      list = list.filter((e: any) => (e.username?.toLowerCase().includes(q)) || (e.nickname?.toLowerCase().includes(q)) || (e.cardHolder?.toLowerCase().includes(q)) || (e.fullName?.toLowerCase().includes(q)));
+      list = list.filter((e: any) => 
+        (e.username?.toLowerCase().includes(q)) || 
+        (e.nickname?.toLowerCase().includes(q)) || 
+        (e.cardHolder?.toLowerCase().includes(q)) || 
+        (e.fullName?.toLowerCase().includes(q)) ||
+        (e.title?.toLowerCase().includes(q)) ||
+        (e.notes?.toLowerCase().includes(q)) ||
+        (e.subGroup?.toLowerCase().includes(q)) ||
+        (e.url?.toLowerCase().includes(q)) ||
+        (e.email?.toLowerCase().includes(q))
+      );
     }
     return list;
   }, [entries, activeCategory, searchQuery]);
@@ -975,20 +1010,13 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
   };
 
   const getSubText = () => {
-    const formatDate = (ts?: number) => {
-      if (!ts) return '';
-      const d = new Date(ts);
-      return ` (${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()})`;
-    };
-    const dateStr = formatDate(entry.createdAt);
-
-    if (entry.group === 'Mạng Internet' && entry.type === 'login') return (entry.username || '...') + dateStr;
+    if (entry.group === 'Mạng Internet' && entry.type === 'login') return entry.username || '...';
     switch (entry.type) {
-      case 'login': return (entry.username || '...') + dateStr;
-      case 'card': return (entry.cardHolder || '...') + dateStr;
-      case 'document': return (entry.fullName || '...') + dateStr;
-      case 'contact': return (entry.fullName || '...') + dateStr;
-      default: return (entry.username || entry.cardNumber || entry.phone || '...') + dateStr;
+      case 'login': return entry.username || '...';
+      case 'card': return entry.cardHolder || '...';
+      case 'document': return entry.fullName || '...';
+      case 'contact': return entry.fullName || '...';
+      default: return entry.username || entry.cardNumber || entry.phone || '...';
     }
   };
 
@@ -1000,7 +1028,7 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
         </div>
         <div className="overflow-hidden">
           <h4 className={`text-sm font-bold truncate leading-tight ${!isDark ? 'text-black' : ''}`}>{getMainText()}</h4>
-          <p className="text-[10px] uppercase tracking-tighter mt-1 text-gray-500 truncate">{getSubText()}</p>
+          <p className="text-[10px] tracking-tighter mt-1 text-gray-500 truncate lowercase">{getSubText()}</p>
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -1150,8 +1178,9 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
       <section className={`rounded-[2.5rem] p-8 border text-center ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200 shadow-lg'}`}>
         <h4 className={`text-xl font-black ${!isDark ? 'text-black' : ''}`}>{t.appTitle}</h4>
         <p className="text-[11px] text-gray-500 italic">"{t.safeQuote}"</p>
+        <p className="text-[9px] font-bold text-gray-400 uppercase mt-1">{t.version}</p>
         <div className="h-px w-full my-4 bg-white/5" />
-        <p className="text-[9px] font-bold text-gray-500 uppercase">{t.version}</p>
+        <p className="text-[10px] font-bold text-gray-500 uppercase">by Loong Lee</p>
         <p className="text-[13px] font-bold text-[#4CAF50]">{t.contactInfo}</p>
       </section>
       <div className={`rounded-[2.5rem] overflow-hidden border ${isDark ? 'bg-[#161616] border-white/5' : 'bg-white border-gray-200 shadow-md'}`}>
@@ -1294,10 +1323,12 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
   );
 };
 
-const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, addType, setIsEditing, deleteEntry, deleteClickCount }: any) => {
+const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, addType, setIsEditing, deleteEntry, deleteClickCount, setToast }: any) => {
   const [localData, setLocalData] = useState<any>(() => {
     if (entry) return { ...entry };
-    return { type: addType || 'login', group: '---', subGroup: '', username: '', password: '', notes: '', atmPin: '', cardType: '', expiryMonth: '', cardNumber: '', cardHolder: '', frontImage: '', backImage: '', fullName: '', phone: '', email: '', postCode: '', address: '', documentType: '', idNumber: '', dob: '', gender: '', residence: '', birthRegPlace: '', hospital: '', issuer: '', issueDate: '', expiryDate: '', nationality: '', passportType: '', passportCode: '', class: '', msAuthCode: '', googleAuthQr: '', msAuthQr: '' };
+    const base = { type: addType || 'login', group: '---', subGroup: '', username: '', password: '', notes: '', atmPin: '', cardType: '', expiryMonth: '', cardNumber: '', cardHolder: '', frontImage: '', backImage: '', fullName: '', phone: '', email: '', postCode: '', address: '', documentType: '', idNumber: '', dob: '', gender: '', residence: '', birthRegPlace: '', hospital: '', issuer: '', issueDate: '', expiryDate: '', nationality: '', passportType: '', passportCode: '', class: '', msAuthCode: '', googleAuthQr: '', msAuthQr: '', customerSince: '', cvv: '', issuePlace: '' };
+    if (addType === 'document') base.nationality = 'Việt Nam';
+    return base;
   });
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -1313,22 +1344,82 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
     }
   };
 
-  const copyableField = (label: string, field: string, value: string, type: string = "text", placeholder: string = "") => {
+  const [visibleFields, setVisibleFields] = useState<{[key: string]: boolean}>({});
+  const [ocrModal, setOcrModal] = useState<{type: 'card' | 'document', field: string} | null>(null);
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false);
+
+  const handleOcrScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !ocrModal) return;
+
+    setIsOcrProcessing(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const imageSrc = event.target?.result as string;
+        const result = await ocrService.scanImage(imageSrc, ocrModal.type);
+        
+        const newData = { ...localData };
+        if (ocrModal.type === 'card') {
+          if (result.cardNumber) newData.cardNumber = result.cardNumber;
+          if (result.expiryDate) newData.expiryMonth = result.expiryDate;
+        } else if (ocrModal.type === 'document') {
+          if (result.idNumber) newData.idNumber = result.idNumber;
+        }
+        
+        setLocalData(newData);
+        setOcrModal(null);
+        setToast(t.success);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('OCR Error:', err);
+      setToast("Lỗi nhận diện hình ảnh");
+    } finally {
+      setIsOcrProcessing(false);
+    }
+  };
+
+  const copyableField = (label: string, field: string, value: string, type: string = "text", placeholder: string = "", showCopy: boolean = true, onScan?: () => void, forceUpper: boolean = false) => {
     if (isView && !value) return null;
+    const isPassword = type === 'password';
+    const isVisible = visibleFields[field];
+    const inputType = isPassword ? (isVisible ? 'text' : 'password') : type;
+
     return (
       <div className="space-y-1 w-full min-w-0 overflow-hidden">
         <label className="text-[10px] font-black uppercase text-gray-500 ml-1 truncate block">{label}</label>
         <div className="relative w-full">
           <input 
             disabled={isView} 
-            type={type} 
+            type={inputType} 
             value={value} 
-            onChange={e => setLocalData({...localData, [field]: e.target.value})} 
-            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base box-border ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} 
+            onChange={e => {
+              let val = e.target.value;
+              if (forceUpper) val = val.toUpperCase();
+              setLocalData({...localData, [field]: val});
+            }} 
+            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base box-border ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'} ${(isPassword || showCopy || onScan) ? 'pr-24' : ''} ${forceUpper ? 'uppercase' : ''}`} 
             placeholder={placeholder} 
             style={{ maxWidth: '100%' }}
           />
-          {(value && (isView || true)) && <button type="button" onClick={() => copy(value)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#4CAF50] p-2 transition-colors"><Icons.Copy size={14}/></button>}
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            {onScan && !isView && (
+              <button type="button" onClick={onScan} className="text-gray-400 hover:text-[#4CAF50] p-2 transition-colors">
+                <Icons.Camera size={16}/>
+              </button>
+            )}
+            {showCopy && value && (
+              <button type="button" onClick={() => copy(value)} className="text-gray-400 hover:text-[#4CAF50] p-2 transition-colors">
+                <Icons.Copy size={14}/>
+              </button>
+            )}
+            {isPassword && (
+              <button type="button" onClick={() => setVisibleFields(prev => ({...prev, [field]: !prev[field]}))} className="text-gray-400 hover:text-[#4CAF50] p-2 transition-colors ml-1">
+                {isVisible ? <Icons.EyeOff size={16}/> : <Icons.Eye size={16}/>}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1344,16 +1435,16 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         <div className="max-w-md mx-auto space-y-5">
           {localData.type === 'login' && (
             <>
-              {(!isView || (localData.group && localData.group !== '---')) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
-              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
+              {(!isView || (localData.group && localData.group !== '---')) && localData.group !== 'Mạng Internet' && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
+              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && localData.group !== 'Mạng Internet' && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
               {copyableField(t.username, 'username', localData.username || "", "text", t.usernameHint)}
-              {copyableField(t.password, 'password', localData.password || "", "password")}
+              {copyableField(t.password, 'password', localData.password || "", "password", "")}
               
               {!isView && <button type="button" onClick={() => setAdvancedOpen(!advancedOpen)} className="flex items-center gap-2 text-[11px] font-black text-[#4CAF50] uppercase tracking-widest py-2 px-1">{advancedOpen ? <Icons.ChevronDown size={14}/> : <Icons.ChevronRight size={14}/>} {t.advancedOptions}</button>}
               {(advancedOpen || isView) && (
                 <div className="space-y-5 animate-in slide-in-from-top-2">
                   {copyableField(t.url, 'url', localData.url || "", "text", t.urlHint)}
-                  {copyableField(t.pinCode, 'pin', localData.pin || "", "password")}
+                  {copyableField(t.pinCode, 'pin', localData.pin || "", "password", "")}
                   
                   <div className="space-y-5">
                     {copyableField(t.authCode, 'authCode', localData.authCode || "", "password", t.authCodeHint)}
@@ -1381,7 +1472,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     )}
                   </div>
 
-                  {copyableField(t.recoveryInfo, 'recoveryInfo', localData.recoveryInfo || "", "password", t.recoveryInfoHint)}
+                  {copyableField(t.recoveryInfo, 'recoveryInfo', localData.recoveryInfo || "", "text", t.recoveryInfoHint)}
                   
                   {(!isView || localData.notes) && (
                     <div className="space-y-1">
@@ -1398,15 +1489,19 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
               {(!isView || localData.title) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.title}</label><select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.title ? 'text-gray-400' : ''}`}><option value="">{t.chooseBank}</option>{(settings.subFolders['Ngân hàng'] || []).filter(b => !WALLET_LIST.includes(b)).map(b => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>}
               {!WALLET_LIST.includes(localData.title) ? (
                 <>
-                  {(!isView || localData.cardType || localData.expiryMonth) && (
+                  {(!isView || localData.cardType) && (
                     <div className="space-y-5">
                       {(!isView || localData.cardType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.cardType}</label><select disabled={isView} value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.cardType ? 'text-gray-400' : ''}`}><option value="" disabled>{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>}
-                      {copyableField(t.expiryLabel, 'expiryMonth', localData.expiryMonth || "", "text", t.expiryHint)}
                     </div>
                   )}
-                  {copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "text", "0000 0000 0000 0000")}
+                  {copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "number", "0000 0000 0000 0000", true, () => setOcrModal({type: 'card', field: 'cardNumber'}))}
                   {copyableField(t.cardName, 'cardHolder', localData.cardHolder || "", "text", t.cardNameHint)}
-                  {copyableField(t.atmPin, 'atmPin', localData.atmPin || "", "password")}
+                  {copyableField(t.atmPin, 'atmPin', localData.atmPin || "", "password", "")}
+                  <div className="flex gap-4">
+                    <div className="flex-1">{copyableField("Ngày tạo thẻ (Customer Since)", 'customerSince', localData.customerSince || "", "text", "Tháng/Năm")}</div>
+                    <div className="flex-1">{copyableField("Thời hạn (Good Thru)", 'expiryMonth', localData.expiryMonth || "", "text", "Tháng/Năm")}</div>
+                  </div>
+                  {copyableField("Mã CVV/CVC (phía sau thẻ)", 'cvv', localData.cvv || "", "password", "...")}
                   {(!isView || localData.notes) && (
                     <div className="space-y-1">
                       <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
@@ -1415,7 +1510,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   )}
                 </>
               ) : (
-                <>{copyableField(t.phone, 'phone', localData.phone || "", "text", t.phoneHint)}{copyableField(t.password, 'password', localData.password || "", "password")}{(!isView || localData.notes) && (
+                <>{copyableField(t.phone, 'phone', localData.phone || "", "text", t.phoneHint)}{copyableField(t.password, 'password', localData.password || "", "password", "")}{(!isView || localData.notes) && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
                     <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
@@ -1439,9 +1534,9 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             <>
               {copyableField(t.nickname, 'nickname', localData.nickname || "", "text", t.nicknameHint)}
               {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", t.fullNameHint)}
-              {copyableField(t.phone, 'phone', localData.phone || "", "text", t.phoneHint)}
+              {copyableField(t.phone, 'phone', localData.phone || "", "number", t.phoneHint)}
               {copyableField(t.email, 'email', localData.email || "", "text", t.emailHint)}
-              {copyableField(t.postCode, 'postCode', localData.postCode || "", "text", t.postCodeHint)}
+              {copyableField(t.postCode, 'postCode', localData.postCode || "", "number", t.postCodeHint)}
               {copyableField(t.address, 'address', localData.address || "", "text", t.addressHint)}
               {(!isView || localData.notes) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'}`} /></div>}
               <button type="button" onClick={() => setShowQR(!showQR)} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"><Icons.Camera size={16} /> {t.createQRCode}</button>
@@ -1458,14 +1553,15 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                 <div className="space-y-5 animate-in fade-in w-full">
                   {/* Common document header fields */}
                   <div className="space-y-4 w-full">
-                    {localData.documentType === 'health_insurance' ? copyableField(t.insuranceId, 'idNumber', localData.idNumber || "", "text", "...") :
-                     localData.documentType === 'driving_license' ? copyableField(t.licenseId, 'idNumber', localData.idNumber || "", "text", "...") :
-                     localData.documentType === 'passport' ? copyableField(t.passportId, 'idNumber', localData.idNumber || "", "text", "...") :
-                     copyableField("Số định danh", 'idNumber', localData.idNumber || "", "text", "Số hiệu định danh...")}
+                    {localData.documentType === 'health_insurance' ? copyableField(t.insuranceId, 'idNumber', localData.idNumber || "", "number", "...") :
+                     localData.documentType === 'driving_license' ? copyableField(t.licenseId, 'idNumber', localData.idNumber || "", "number", "...") :
+                     localData.documentType === 'passport' ? copyableField(t.passportId, 'idNumber', localData.idNumber || "", "number", "...") :
+                     copyableField("Số định danh", 'idNumber', localData.idNumber || "", "number", "Số hiệu định danh...", true, localData.documentType === 'id_card' ? () => setOcrModal({type: 'document', field: 'idNumber'}) : undefined)}
                     
-                    {copyableField(t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên in hoa...")}
+                    {copyableField(localData.documentType === 'id_card' ? "Họ, chữ đệm và tên khai sinh" : t.fullName, 'fullName', localData.fullName || "", "text", "Họ và tên in hoa...", true, undefined, localData.documentType === 'id_card')}
                     
-                    {copyableField("Ngày sinh", 'dob', localData.dob || "", "date")}
+                    {copyableField("Ngày sinh", 'dob', localData.dob || "", "date", "")}
+                    {localData.documentType === 'id_card' && copyableField("Có giá trị đến", 'expiryDate', localData.expiryDate || "", "date", "")}
                     
                     {(!isView || localData.gender) && (
                       <div className="space-y-1 w-full">
@@ -1477,6 +1573,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                         </select>
                       </div>
                     )}
+                    {localData.documentType === 'id_card' && copyableField("Quốc tịch", 'nationality', localData.nationality || "Việt Nam", "text", "")}
                   </div>
 
                   {/* Residence and specific fields by type */}
@@ -1484,6 +1581,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     <div className="space-y-4 w-full">
                       {copyableField(t.birthRegPlace, 'birthRegPlace', localData.birthRegPlace || "", "text", "...")}
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "...")}
+                      {copyableField("Ngày tháng năm cấp", 'issueDate', localData.issueDate || "", "date", "")}
+                      {copyableField("Nơi cấp", 'issuePlace', localData.issuePlace || "", "text", "...")}
                     </div>
                   )}
 
@@ -1491,8 +1590,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     <div className="space-y-4 w-full">
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ...")}
                       {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Nơi đăng ký KCB...")}
-                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
-                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
+                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date", "")}
+                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date", "")}
                     </div>
                   )}
 
@@ -1501,8 +1600,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                       {copyableField(t.classLabel, 'class', localData.class || "", "text", "Hạng...")}
                       {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cơ quan cấp...")}
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
-                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
-                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date")}
+                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date", "")}
+                      {copyableField(t.expiryDate, 'expiryDate', localData.expiryDate || "", "date", "")}
                     </div>
                   )}
 
@@ -1511,7 +1610,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
                       {copyableField(t.passportType, 'passportType', localData.passportType || "", "text", "P")}
                       {copyableField(t.nationality, 'nationality', localData.nationality || "", "text", "VIỆT NAM")}
-                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
+                      {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date", "")}
                     </div>
                   )}
 
@@ -1540,6 +1639,11 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
         </div>
       </main>
+      {isView && localData.createdAt && (
+        <div className="max-w-md mx-auto mb-2 text-right">
+          <p className="text-[10px] italic text-gray-500">Ngày tạo: {new Date(localData.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+        </div>
+      )}
       {!isView ? (
         <div className={`sticky bottom-0 left-0 right-0 p-4 border-t z-[120] transition-colors ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]'}`}><button onClick={() => onSave(localData)} className="w-full max-w-md mx-auto block bg-[#4CAF50] text-white py-4 rounded-3xl text-[12px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#4CAF50]/30 active:scale-95 transition-all">{t.save}</button></div>
       ) : (
@@ -1548,6 +1652,43 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             <button onClick={() => { onClose(); setIsEditing(localData); }} className="flex-1 flex flex-col items-center gap-1 p-2 text-gray-500 hover:text-[#4CAF50] transition-all"><Icons.Pencil size={20}/><span className="text-[9px] font-bold uppercase">Sửa</span></button>
             <button onClick={() => copy(localData.password || localData.cardNumber || localData.phone || '')} className="flex-1 flex flex-col items-center gap-1 p-2 text-gray-500 hover:text-[#4CAF50] transition-all"><Icons.Copy size={20}/><span className="text-[9px] font-bold uppercase">Sao chép</span></button>
             <button onClick={() => deleteEntry(localData.id)} className={`flex-1 flex flex-col items-center gap-1 p-2 transition-all ${deleteClickCount.id === localData.id ? 'text-red-500' : 'text-gray-500'}`}><Icons.Trash2 size={20}/><span className="text-[9px] font-bold uppercase">Xóa</span></button>
+          </div>
+        </div>
+      )}
+      {ocrModal && (
+        <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col items-center justify-center p-6 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#121212] border border-white/10 rounded-[2.5rem] p-8 space-y-6 relative overflow-hidden">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-20 h-20 bg-[#4CAF50]/20 rounded-full flex items-center justify-center relative">
+                <Icons.Camera className="text-[#4CAF50]" size={32} />
+                {isOcrProcessing && (
+                  <div className="absolute inset-0 border-4 border-[#4CAF50] border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+              <h3 className="text-lg font-bold text-white uppercase tracking-tight">Quét {ocrModal.type === 'card' ? 'Thẻ' : 'Căn cước'}</h3>
+              <p className="text-gray-400 text-xs">Vui lòng chọn ảnh để trích xuất thông tin tự động.</p>
+            </div>
+
+            {!isOcrProcessing ? (
+              <div className="space-y-3">
+                <label className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-center block cursor-pointer active:scale-95 transition-all shadow-lg shadow-[#4CAF50]/20">
+                  CHỌN ẢNH TỪ THƯ VIỆN
+                  <input type="file" className="hidden" accept="image/*" onChange={handleOcrScan} />
+                </label>
+                <button onClick={() => setOcrModal(null)} className="w-full py-4 text-gray-500 font-bold uppercase text-[10px] tracking-widest">HỦY BỎ</button>
+              </div>
+            ) : (
+              <div className="py-8 flex flex-col items-center space-y-4">
+                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden relative">
+                  <div className="absolute inset-0 bg-[#4CAF50] animate-[shimmer_2s_infinite]" style={{ width: '50%' }} />
+                </div>
+                <p className="text-[10px] font-black text-[#4CAF50] uppercase tracking-widest animate-pulse">Đang xử lý dữ liệu...</p>
+              </div>
+            )}
+            
+            {isOcrProcessing && (
+              <div className="absolute inset-x-0 top-0 h-1 bg-[#4CAF50]/50 shadow-[0_0_15px_#4CAF50] animate-[scan_2s_linear_infinite]" />
+            )}
           </div>
         </div>
       )}

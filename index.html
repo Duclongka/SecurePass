@@ -43,6 +43,17 @@
             -webkit-user-select: none;
             user-select: none;
         }
+
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
     </style>
 <script type="importmap">
 {
