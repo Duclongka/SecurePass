@@ -170,7 +170,11 @@ const translations = {
     insuranceId: 'Insurance ID',
     licenseId: 'License ID',
     passportId: 'Passport ID',
-    classLabel: 'Class'
+    classLabel: 'Class',
+    id_card: 'ID Card',
+    health_insurance: 'Health Insurance',
+    driving_license: 'Driving License',
+    passport: 'Passport'
   },
   vi: {
     appTitle: 'SecurePass',
@@ -213,10 +217,10 @@ const translations = {
     authCodeHint: 'Nhập mã xác thực Google Auth',
     msAuthCode: 'Mã Microsoft Authenticator',
     msAuthCodeHint: 'Nhập mã xác thực Microsoft Auth',
-    googleAuthQr: 'Nhập mã QR Google Authenticator',
-    msAuthQr: 'Nhập mã QR Microsoft Authenticator',
+    googleAuthQr: 'Ảnh mã QR của GA',
+    msAuthQr: 'Ảnh mã QR của MA',
     recoveryInfo: 'Thông tin khôi phục',
-    recoveryInfoHint: 'Nhập Email hoặc số điện thoại khôi phục',
+    recoveryInfoHint: 'Email hoặc số điện thoại',
     advancedOptions: 'Tùy chọn thêm',
     url: 'Đường dẫn (URL)',
     urlHint: 'https://gmail.com...',
@@ -335,7 +339,11 @@ const translations = {
     insuranceId: 'Số Bảo hiểm',
     licenseId: 'Số giấy phép',
     passportId: 'Số hộ chiếu',
-    classLabel: 'Hạng'
+    classLabel: 'Hạng',
+    id_card: 'Thẻ Căn cước',
+    health_insurance: 'Thẻ BHYT',
+    driving_license: 'Giấy phép lái xe',
+    passport: 'Sổ Hộ chiếu'
   }
 };
 
@@ -451,7 +459,8 @@ const App: React.FC = () => {
   const t = translations[settings.language] || translations.vi;
 
   useEffect(() => {
-    if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_vault')) {
+    const forcePassword = localStorage.getItem('securepass_force_password');
+    if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_vault') && !forcePassword) {
       const timer = setTimeout(() => handleBiometricLogin(), 800);
       return () => clearTimeout(timer);
     }
@@ -613,6 +622,7 @@ const App: React.FC = () => {
       setView('vault');
       setMasterPassword(passToUse);
       setSettings(prev => ({ ...prev, hasMasterPassword: true }));
+      localStorage.removeItem('securepass_force_password');
     } catch (err) {
       console.error("Login error", err);
       setToast(t.wrongPassword);
@@ -639,6 +649,7 @@ const App: React.FC = () => {
         const content = JSON.parse(event.target?.result as string);
         if (content.type !== 'MASTER_KEY_FILE') throw new Error();
         setUploadedKeyFile(content);
+        localStorage.setItem('securepass_force_password', 'true');
         setToast(t.keyFileDetected);
       } catch {
         setToast('File không hợp lệ');
@@ -671,6 +682,7 @@ const App: React.FC = () => {
         if (content.type === 'SECUREPASS_BACKUP') {
           setPendingImportData(content);
           setIsVerifyingImport(true);
+          localStorage.setItem('securepass_force_password', 'true');
           setToast("Vui lòng nhập mật khẩu của dữ liệu mới.");
           handleLock();
         } else { setToast(t.importFileErrorMsg); }
@@ -763,18 +775,25 @@ const App: React.FC = () => {
 };
 
 const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => {
+  const [showKeyError, setShowKeyError] = useState(false);
   const hasUploadedKeyFile = !!uploadedKeyFile;
   const hasRememberedPass = !!localStorage.getItem('securepass_remembered_mp');
   const hasBioSetup = !!localStorage.getItem('securepass_biometric_vault');
+  const forcePassword = !!localStorage.getItem('securepass_force_password');
   
-  const showPasswordField = !hasRememberedPass || hasUploadedKeyFile || isVerifyingImport;
+  // Show password field if it's the first time/device change (no remembered password)
+  // OR if a new key file is uploaded (to verify it)
+  // OR if we are verifying an import
+  // OR if we are forced to use password (after change/new device)
+  const showPasswordField = !hasRememberedPass || hasUploadedKeyFile || isVerifyingImport || forcePassword;
 
   const onUnlockClick = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasUploadedKeyFile && !isKeyFileRemembered) {
-      // This should be handled by the disabled state, but just in case
+      setShowKeyError(true);
       return;
     }
+    setShowKeyError(false);
     handleLogin(e);
   };
 
@@ -790,13 +809,13 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
           <div className="space-y-4">
             {/* Move Key File Selection UP */}
             <div className="space-y-3">
-              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${hasUploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
-                <Icons.Database size={24} className={hasUploadedKeyFile ? 'text-[#4CAF50]' : ''} />
-                <span className={`text-[10px] font-black uppercase tracking-wider ${hasUploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{hasUploadedKeyFile ? "Đã nhận diện File Khóa" : t.chooseKeyFile}</span>
-                <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileSelection} />
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${(hasUploadedKeyFile || isKeyFileRemembered) ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
+                <Icons.Database size={24} className={(hasUploadedKeyFile || isKeyFileRemembered) ? 'text-[#4CAF50]' : ''} />
+                <span className={`text-[10px] font-black uppercase tracking-wider ${(hasUploadedKeyFile || isKeyFileRemembered) ? 'text-[#4CAF50]' : ''}`}>{(hasUploadedKeyFile || isKeyFileRemembered) ? "Đã nhận diện File Khóa" : t.chooseKeyFile}</span>
+                <input type="file" className="hidden" accept=".vpass" onChange={(e) => { setShowKeyError(false); handleKeyFileSelection(e); }} />
               </label>
-              {!hasUploadedKeyFile && !isKeyFileRemembered && (
-                <p className="text-[10px] text-red-500 font-bold text-center animate-pulse">Bắt buộc chọn File Khóa để mở khóa</p>
+              {showKeyError && !hasUploadedKeyFile && !isKeyFileRemembered && (
+                <p className="text-[10px] text-red-500 font-bold text-center animate-bounce">Bắt buộc chọn File Khóa để mở khóa</p>
               )}
             </div>
 
@@ -825,7 +844,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
             )}
           </div>
 
-          <button type="submit" disabled={isUnlocking || (!hasUploadedKeyFile && !isKeyFileRemembered) || (!masterPassword && showPasswordField)} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+          <button type="submit" disabled={isUnlocking || (!masterPassword && showPasswordField)} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
             {isUnlocking ? <Icons.Loader2 className="animate-spin" size={18} /> : <Icons.Unlock size={18} />} 
             {isUnlocking ? 'Đang xác thực...' : t.unlockVault}
           </button>
@@ -927,7 +946,7 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
     switch (entry.type) {
       case 'login': return entry.subGroup || entry.username || 'Item';
       case 'card': return entry.title || 'Item';
-      case 'document': return entry.documentType ? (t[entry.documentType] || entry.documentType) : 'Item';
+      case 'document': return t[entry.documentType] || entry.documentType || t.typeDocument;
       case 'contact': return entry.nickname || entry.fullName || 'Item';
       default: return entry.title || 'Item';
     }
@@ -988,6 +1007,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, settings, 
     setKeyFile(kf);
     // Store the password for "remembered" device access
     localStorage.setItem('securepass_remembered_mp', newMP);
+    localStorage.setItem('securepass_force_password', 'true');
     await setMasterPassword(newMP, kf);
     setIsSuccess(true);
   };
@@ -1313,7 +1333,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{localData.group === 'Mạng Internet' ? "Mã QR WiFi" : t.googleAuthQr}</label>
                         <label className={`w-full aspect-[2/1] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all ${isDark ? 'bg-black/40 border-white/10 hover:border-[#4CAF50]/50' : 'bg-white border-gray-200 hover:border-[#4CAF50]/50 shadow-sm'}`}>
-                          {localData.googleAuthQr ? <img src={localData.googleAuthQr} className="w-full h-full object-contain" /> : <div className="text-center text-gray-500"><Icons.Plus className="mx-auto mb-1" size={24} /><span className="text-[10px] font-bold uppercase">{t.googleAuthQr}</span></div>}
+                          {localData.googleAuthQr ? <img src={localData.googleAuthQr} className="w-full h-full object-contain" /> : <div className="text-center text-gray-500"><Icons.Plus className="mx-auto" size={24} /></div>}
                           <input type="file" className="hidden" accept="image/*" onChange={e => handleImage(e, 'googleAuthQr')} disabled={isView} />
                         </label>
                       </div>
@@ -1326,7 +1346,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.msAuthQr}</label>
                         <label className={`w-full aspect-[2/1] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all ${isDark ? 'bg-black/40 border-white/10 hover:border-[#4CAF50]/50' : 'bg-white border-gray-200 hover:border-[#4CAF50]/50 shadow-sm'}`}>
-                          {localData.msAuthQr ? <img src={localData.msAuthQr} className="w-full h-full object-contain" /> : <div className="text-center text-gray-500"><Icons.Plus className="mx-auto mb-1" size={24} /><span className="text-[10px] font-bold uppercase">{t.msAuthQr}</span></div>}
+                          {localData.msAuthQr ? <img src={localData.msAuthQr} className="w-full h-full object-contain" /> : <div className="text-center text-gray-500"><Icons.Plus className="mx-auto" size={24} /></div>}
                           <input type="file" className="hidden" accept="image/*" onChange={e => handleImage(e, 'msAuthQr')} disabled={isView} />
                         </label>
                       </div>
@@ -1359,9 +1379,20 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   {copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "text", "0000 0000 0000 0000")}
                   {copyableField(t.cardName, 'cardHolder', localData.cardHolder || "", "text", t.cardNameHint)}
                   {copyableField(t.atmPin, 'atmPin', localData.atmPin || "", "password")}
+                  {(!isView || localData.notes) && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
+                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
+                    </div>
+                  )}
                 </>
               ) : (
-                <>{copyableField(t.phone, 'phone', localData.phone || "", "text", t.phoneHint)}{copyableField(t.password, 'password', localData.password || "", "password")}</>
+                <>{copyableField(t.phone, 'phone', localData.phone || "", "text", t.phoneHint)}{copyableField(t.password, 'password', localData.password || "", "password")}{(!isView || localData.notes) && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
+                    <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
+                  </div>
+                )}</>
               )}
               {['frontImage', 'backImage'].map(f => (
                 (!isView || localData[f]) && (
