@@ -763,11 +763,20 @@ const App: React.FC = () => {
 };
 
 const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isKeyFileRemembered, isVerifyingImport, isUnlocking }: any) => {
-  const hasKeyFile = uploadedKeyFile || isKeyFileRemembered;
+  const hasUploadedKeyFile = !!uploadedKeyFile;
   const hasRememberedPass = !!localStorage.getItem('securepass_remembered_mp');
   const hasBioSetup = !!localStorage.getItem('securepass_biometric_vault');
   
-  const showPasswordField = !hasRememberedPass || !!uploadedKeyFile || isVerifyingImport;
+  const showPasswordField = !hasRememberedPass || hasUploadedKeyFile || isVerifyingImport;
+
+  const onUnlockClick = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hasUploadedKeyFile && !isKeyFileRemembered) {
+      // This should be handled by the disabled state, but just in case
+      return;
+    }
+    handleLogin(e);
+  };
 
   return (
     <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
@@ -777,17 +786,17 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
           <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>{t.appTitle}</h1>
           <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1">{t.unlockSubtitle}</p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={onUnlockClick} className="space-y-4">
           <div className="space-y-4">
             {/* Move Key File Selection UP */}
             <div className="space-y-3">
-              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${uploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
-                <Icons.Database size={24} className={uploadedKeyFile ? 'text-[#4CAF50]' : ''} />
-                <span className={`text-[10px] font-black uppercase tracking-wider ${uploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{uploadedKeyFile ? "Đã nhận diện File Khóa" : t.chooseKeyFile}</span>
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-2xl py-6 px-4 cursor-pointer transition-all ${isDark ? 'bg-black/20 border-white/5 text-gray-500 hover:border-[#4CAF50]/30' : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-[#4CAF50]/30'} ${hasUploadedKeyFile ? 'border-[#4CAF50]/40 bg-[#4CAF50]/5' : ''}`}>
+                <Icons.Database size={24} className={hasUploadedKeyFile ? 'text-[#4CAF50]' : ''} />
+                <span className={`text-[10px] font-black uppercase tracking-wider ${hasUploadedKeyFile ? 'text-[#4CAF50]' : ''}`}>{hasUploadedKeyFile ? "Đã nhận diện File Khóa" : t.chooseKeyFile}</span>
                 <input type="file" className="hidden" accept=".vpass" onChange={handleKeyFileSelection} />
               </label>
-              {!hasKeyFile && (
-                <p className="text-[10px] text-red-500 font-bold text-center animate-pulse">Vui lòng chọn File Khóa để tiếp tục</p>
+              {!hasUploadedKeyFile && !isKeyFileRemembered && (
+                <p className="text-[10px] text-red-500 font-bold text-center animate-pulse">Bắt buộc chọn File Khóa để mở khóa</p>
               )}
             </div>
 
@@ -803,7 +812,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
                 />
               </div>
             ) : (
-              (!hasRememberedPass && !hasBioSetup && hasKeyFile) && (
+              (!hasRememberedPass && !hasBioSetup && isKeyFileRemembered) && (
                 <div className={`p-4 rounded-2xl border flex items-center gap-3 ${isDark ? 'bg-[#4CAF50]/5 border-[#4CAF50]/20' : 'bg-[#4CAF50]/5 border-[#4CAF50]/10'}`}>
                   <div className="w-10 h-10 bg-[#4CAF50] rounded-xl flex items-center justify-center shadow-lg shadow-[#4CAF50]/20">
                     <Icons.FileCheck className="text-white" size={20} />
@@ -816,7 +825,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
             )}
           </div>
 
-          <button type="submit" disabled={isUnlocking || !hasKeyFile || (!masterPassword && showPasswordField)} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+          <button type="submit" disabled={isUnlocking || (!hasUploadedKeyFile && !isKeyFileRemembered) || (!masterPassword && showPasswordField)} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
             {isUnlocking ? <Icons.Loader2 className="animate-spin" size={18} /> : <Icons.Unlock size={18} />} 
             {isUnlocking ? 'Đang xác thực...' : t.unlockVault}
           </button>
@@ -1259,16 +1268,17 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
   const copyableField = (label: string, field: string, value: string, type: string = "text", placeholder: string = "") => {
     if (isView && !value) return null;
     return (
-      <div className="space-y-1 w-full min-w-0">
+      <div className="space-y-1 w-full min-w-0 overflow-hidden">
         <label className="text-[10px] font-black uppercase text-gray-500 ml-1 truncate block">{label}</label>
-        <div className="relative">
+        <div className="relative w-full">
           <input 
             disabled={isView} 
             type={type} 
             value={value} 
             onChange={e => setLocalData({...localData, [field]: e.target.value})} 
-            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} 
+            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base box-border ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} 
             placeholder={placeholder} 
+            style={{ maxWidth: '100%' }}
           />
           {(value && (isView || true)) && <button type="button" onClick={() => copy(value)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#4CAF50] p-2 transition-colors"><Icons.Copy size={14}/></button>}
         </div>
@@ -1383,12 +1393,12 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             </>
           )}
           {localData.type === 'document' && (
-            <>
-              {(!isView || localData.documentType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
+            <div className="w-full max-w-full overflow-x-hidden px-1">
+              {(!isView || localData.documentType) && <div className="space-y-1 mb-5"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
               {localData.documentType && (
-                <div className="space-y-5 animate-in fade-in">
+                <div className="space-y-5 animate-in fade-in w-full">
                   {/* Common document header fields */}
-                  <div className="space-y-4">
+                  <div className="space-y-4 w-full">
                     {localData.documentType === 'health_insurance' ? copyableField(t.insuranceId, 'idNumber', localData.idNumber || "", "text", "...") :
                      localData.documentType === 'driving_license' ? copyableField(t.licenseId, 'idNumber', localData.idNumber || "", "text", "...") :
                      localData.documentType === 'passport' ? copyableField(t.passportId, 'idNumber', localData.idNumber || "", "text", "...") :
@@ -1399,7 +1409,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     {copyableField("Ngày sinh", 'dob', localData.dob || "", "date")}
                     
                     {(!isView || localData.gender) && (
-                      <div className="space-y-1">
+                      <div className="space-y-1 w-full">
                         <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Giới tính</label>
                         <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}>
                           <option value="">--</option>
@@ -1412,14 +1422,14 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
 
                   {/* Residence and specific fields by type */}
                   {localData.documentType === 'id_card' && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 w-full">
                       {copyableField(t.birthRegPlace, 'birthRegPlace', localData.birthRegPlace || "", "text", "...")}
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "...")}
                     </div>
                   )}
 
                   {localData.documentType === 'health_insurance' && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 w-full">
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ...")}
                       {copyableField(t.hospital, 'hospital', localData.hospital || "", "text", "Nơi đăng ký KCB...")}
                       {copyableField(t.issueDate, 'issueDate', localData.issueDate || "", "date")}
@@ -1428,7 +1438,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   )}
 
                   {localData.documentType === 'driving_license' && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 w-full">
                       {copyableField(t.classLabel, 'class', localData.class || "", "text", "Hạng...")}
                       {copyableField(t.issuer, 'issuer', localData.issuer || "", "text", "Cơ quan cấp...")}
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
@@ -1438,7 +1448,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   )}
 
                   {localData.documentType === 'passport' && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 w-full">
                       {copyableField(t.residence, 'residence', localData.residence || "", "text", "Địa chỉ cư trú...")}
                       {copyableField(t.passportType, 'passportType', localData.passportType || "", "text", "P")}
                       {copyableField(t.nationality, 'nationality', localData.nationality || "", "text", "VIỆT NAM")}
@@ -1448,7 +1458,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
 
                   {['frontImage', 'backImage'].map(f => (
                     (!isView || localData[f]) && (
-                      <div key={f} className="space-y-2">
+                      <div key={f} className="space-y-2 w-full">
                         <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t[f as keyof typeof t]}</label>
                         <label className={`w-full aspect-[1.6/1] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all ${isDark ? 'bg-black/40 border-white/10 hover:border-[#4CAF50]/50' : 'bg-white border-gray-200 hover:border-[#4CAF50]/50 shadow-sm'}`}>
                           {localData[f] ? <img src={localData[f]} className="w-full h-full object-cover" /> : <div className="text-center text-gray-500"><Icons.Plus className="mx-auto mb-1" size={24} /><span className="text-[10px] font-bold uppercase">{t[f as keyof typeof t]}</span></div>}
@@ -1460,14 +1470,14 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
 
                   {/* Notes for specific types */}
                   {(localData.documentType === 'passport' || localData.documentType === 'id_card') && (!isView || localData.notes) && (
-                    <div className="space-y-1">
+                    <div className="space-y-1 w-full">
                       <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
-                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'}`} />
+                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
                     </div>
                   )}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </main>
