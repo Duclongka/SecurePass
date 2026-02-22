@@ -136,6 +136,7 @@ const translations = {
     downloadQr: 'Download',
     saveToVault: 'Save',
     shareQr: 'Share',
+    genModePhoto: 'Photo QR',
     wifiHint: 'Scan to join',
     chooseSubGroup: '-- Choose Sub-group --',
     chooseDocType: '-- Document Type --',
@@ -308,6 +309,7 @@ const translations = {
     saveKeyFileBtn: 'Lưu file khóa',
     keyFileInstruction: 'Vui lòng lưu file khóa này ở nơi an toàn. Bạn sẽ cần nó để mở khóa trên các thiết bị mới.',
     shareQr: 'Chia sẻ',
+    genModePhoto: 'QR Ảnh',
     wifiHint: 'Quét để kết nối',
     chooseSubGroup: '-- Chọn nhóm con --',
     chooseDocType: '-- Loại giấy tờ --',
@@ -1498,8 +1500,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   {copyableField(t.cardName, 'cardHolder', localData.cardHolder || "", "text", t.cardNameHint)}
                   {copyableField(t.atmPin, 'atmPin', localData.atmPin || "", "password", "")}
                   <div className="flex gap-4">
-                    <div className="flex-1">{copyableField("Ngày tạo thẻ (Customer Since)", 'customerSince', localData.customerSince || "", "text", "Tháng/Năm")}</div>
-                    <div className="flex-1">{copyableField("Thời hạn (Good Thru)", 'expiryMonth', localData.expiryMonth || "", "text", "Tháng/Năm")}</div>
+                    <div className="flex-1">{copyableField("Ngày tạo thẻ (Customer Since)", 'customerSince', localData.customerSince || "", "text", "10/10")}</div>
+                    <div className="flex-1">{copyableField("Thời hạn (Good Thru)", 'expiryMonth', localData.expiryMonth || "", "text", "10/30")}</div>
                   </div>
                   {copyableField("Mã CVV/CVC (phía sau thẻ)", 'cvv', localData.cvv || "", "password", "...")}
                   {(!isView || localData.notes) && (
@@ -1638,12 +1640,12 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
             </div>
           )}
         </div>
+        {isView && localData.createdAt && (
+          <div className="max-w-md mx-auto mt-8 mb-2 text-right px-4">
+            <p className="text-[9px] italic text-gray-500">Ngày tạo: {new Date(localData.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+          </div>
+        )}
       </main>
-      {isView && localData.createdAt && (
-        <div className="max-w-md mx-auto mb-2 text-right">
-          <p className="text-[10px] italic text-gray-500">Ngày tạo: {new Date(localData.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-        </div>
-      )}
       {!isView ? (
         <div className={`sticky bottom-0 left-0 right-0 p-4 border-t z-[120] transition-colors ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]'}`}><button onClick={() => onSave(localData)} className="w-full max-w-md mx-auto block bg-[#4CAF50] text-white py-4 rounded-3xl text-[12px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#4CAF50]/30 active:scale-95 transition-all">{t.save}</button></div>
       ) : (
@@ -1698,12 +1700,37 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
 
 const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast, onSave }: any) => {
   const [showQR, setShowQR] = useState(false);
-  const [genMode, setGenMode] = useState<'password' | 'wifi' | 'share'>('password');
+  const [genMode, setGenMode] = useState<'password' | 'wifi' | 'share' | 'photo'>('password');
   const [wifiSsid, setWifiSsid] = useState('');
   const [wifiSecurity, setWifiSecurity] = useState('WPA');
   const [wifiPassword, setWifiPassword] = useState('');
   const [shareText, setShareText] = useState('');
   const [showShareQR, setShowShareQR] = useState(false);
+  const [photoData, setPhotoData] = useState<string | null>(null);
+  const [photoQrGenerated, setPhotoQrGenerated] = useState(false);
+
+  useEffect(() => {
+    if (photoQrGenerated) {
+      const timer = setTimeout(() => {
+        setPhotoData(null);
+        setPhotoQrGenerated(false);
+        setToast("QR Ảnh đã hết hạn (5 phút)");
+      }, 5 * 60 * 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [photoQrGenerated]);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoData(reader.result as string);
+        setPhotoQrGenerated(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const wifiValue = useMemo(() => {
     if (wifiSecurity === 'NONE') return `WIFI:S:${wifiSsid};T:nopass;;`;
@@ -1740,7 +1767,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
         <button onClick={() => setShowGenHistory(!showGenHistory)} className={`p-2 transition-all ${showGenHistory ? 'text-[#4CAF50]' : 'text-gray-500'}`}><Icons.History size={22} /></button>
       </header>
       <div className={`p-2 flex gap-1 border-b transition-colors ${isDark ? 'bg-black/20 border-white/5' : 'bg-gray-100 border-gray-200'}`}>
-        {['password', 'wifi', 'share'].map((m: any) => (<button key={m} onClick={() => setGenMode(m)} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${genMode === m ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t[`genMode${m.charAt(0).toUpperCase() + m.slice(1)}` as keyof typeof t]}</button>))}
+        {['password', 'wifi', 'share', 'photo'].map((m: any) => (<button key={m} onClick={() => setGenMode(m)} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-xl transition-all ${genMode === m ? 'bg-[#4CAF50] text-white shadow-lg' : 'text-gray-500'}`}>{t[`genMode${m.charAt(0).toUpperCase() + m.slice(1)}` as keyof typeof t]}</button>))}
       </div>
       <main className="flex-1 flex overflow-hidden">
         <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-32 no-scrollbar">
@@ -1790,6 +1817,30 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
                     <button onClick={() => shareData("QR Code", shareText, (document.getElementById('share-qr-canvas') as HTMLCanvasElement).toDataURL())} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">SHARE QR</button>
                   </div>
               </div>}
+            </div>
+          )}
+          {genMode === 'photo' && (
+            <div className="space-y-6 max-w-lg mx-auto">
+              <div className="space-y-4">
+                <label className={`w-full aspect-[1.6/1] border-2 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all ${isDark ? 'bg-black/40 border-white/10 hover:border-[#4CAF50]/50' : 'bg-white border-gray-200 hover:border-[#4CAF50]/50 shadow-sm'}`}>
+                  {photoData ? <img src={photoData} className="w-full h-full object-cover" /> : <div className="text-center text-gray-500"><Icons.Plus className="mx-auto mb-2" size={32} /><span className="text-xs font-bold uppercase">Thêm ảnh</span></div>}
+                  <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setPhotoQrGenerated(true)} disabled={!photoData} className="bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase shadow-lg disabled:opacity-30 active:scale-95 transition-all flex items-center justify-center gap-2"><Icons.Camera size={18}/> {t.createQRCode}</button>
+                  <button onClick={() => { setPhotoData(null); setPhotoQrGenerated(false); }} className={`py-4 rounded-3xl font-bold text-[11px] uppercase border active:scale-95 transition-all flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/5 text-white' : 'bg-white border-gray-200 shadow-sm'}`}><Icons.Trash2 size={18}/> Xóa</button>
+                </div>
+              </div>
+              {photoQrGenerated && photoData && (
+                <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl qr-canvas-target animate-in zoom-in-95 space-y-4">
+                  <QRCodeCanvas id="photo-qr-canvas" value={photoData} size={200} includeMargin level="L" />
+                  <p className="text-[9px] text-red-500 font-bold uppercase animate-pulse">Mã QR sẽ tự hủy sau 5 phút</p>
+                  <div className="flex gap-4">
+                    <button onClick={() => { const link = document.createElement('a'); link.download = 'photo-qr.png'; link.href = (document.getElementById('photo-qr-canvas') as HTMLCanvasElement).toDataURL(); link.click(); }} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">{t.downloadQr}</button>
+                    <button onClick={() => shareData("Photo QR", "Image Data", (document.getElementById('photo-qr-canvas') as HTMLCanvasElement).toDataURL())} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">CHIA SẺ NHANH</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
