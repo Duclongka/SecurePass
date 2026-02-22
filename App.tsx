@@ -468,11 +468,33 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (isLocked || !settings.autoLockEnabled) return;
+
+    let timer: number;
+
     const resetTimer = () => {
-      const timer = window.setTimeout(() => handleLock(), settings.autoLockMinutes * 60000);
-      return () => clearTimeout(timer);
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        handleLock();
+      }, settings.autoLockMinutes * 60000);
     };
+
+    // Events to track user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    
+    // Add event listeners
+    events.forEach(event => {
+      window.addEventListener(event, resetTimer);
+    });
+
+    // Initial timer start
     resetTimer();
+
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      events.forEach(event => {
+        window.removeEventListener(event, resetTimer);
+      });
+    };
   }, [isLocked, settings.autoLockEnabled, settings.autoLockMinutes]);
 
   useEffect(() => {
@@ -953,13 +975,20 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
   };
 
   const getSubText = () => {
-    if (entry.group === 'Mạng Internet' && entry.type === 'login') return entry.username || '...';
+    const formatDate = (ts?: number) => {
+      if (!ts) return '';
+      const d = new Date(ts);
+      return ` (${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()})`;
+    };
+    const dateStr = formatDate(entry.createdAt);
+
+    if (entry.group === 'Mạng Internet' && entry.type === 'login') return (entry.username || '...') + dateStr;
     switch (entry.type) {
-      case 'login': return entry.username || '...';
-      case 'card': return entry.cardHolder || '...';
-      case 'document': return entry.fullName || '...';
-      case 'contact': return entry.fullName || '...';
-      default: return entry.username || entry.cardNumber || entry.phone || '...';
+      case 'login': return (entry.username || '...') + dateStr;
+      case 'card': return (entry.cardHolder || '...') + dateStr;
+      case 'document': return (entry.fullName || '...') + dateStr;
+      case 'contact': return (entry.fullName || '...') + dateStr;
+      default: return (entry.username || entry.cardNumber || entry.phone || '...') + dateStr;
     }
   };
 
@@ -976,7 +1005,6 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Pencil size={18} /></button>
-        <button onClick={(e) => { e.stopPropagation(); copy(entry.password || entry.cardNumber || entry.phone || entry.idNumber || ''); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Copy size={18} /></button>
         <button onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} className={`p-2 transition-all ${deleteClickCount.id === entry.id ? 'text-red-500' : 'text-gray-500'}`}><Icons.Trash2 size={18} /></button>
       </div>
     </div>
