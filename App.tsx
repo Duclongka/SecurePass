@@ -487,7 +487,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const forcePassword = localStorage.getItem('securepass_force_password');
     if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_vault') && !forcePassword) {
-      const timer = setTimeout(() => handleBiometricLogin(), 800);
+      const timer = setTimeout(() => handleBiometricLogin(), 300);
       return () => clearTimeout(timer);
     }
   }, [isLocked, settings.biometricEnabled]);
@@ -537,6 +537,7 @@ const App: React.FC = () => {
   const handleLock = () => {
     setIsLocked(true);
     setBioFailed(false);
+    localStorage.removeItem('securepass_force_password');
     setEntries([]);
     setMasterPassword('');
     setView('login');
@@ -636,14 +637,20 @@ const App: React.FC = () => {
         }
       }
 
-      // Enforce manual key file selection for 2FA
-      if (!uploadedKeyFile) {
-        setToast(t.chooseKeyFile);
-        setIsUnlocking(false);
-        return;
+      // Use uploaded key file or fallback to stored one (essential for biometric/seamless login)
+      let keyFileToUse = "";
+      if (uploadedKeyFile) {
+        keyFileToUse = JSON.stringify(uploadedKeyFile);
+      } else {
+        const storedKey = localStorage.getItem('securepass_master_hash');
+        if (storedKey) {
+          keyFileToUse = storedKey;
+        } else {
+          setToast(t.chooseKeyFile);
+          setIsUnlocking(false);
+          return;
+        }
       }
-
-      const keyFileToUse = JSON.stringify(uploadedKeyFile);
 
       const result = await SecurityService.verifyAccess(passToUse, keyFileToUse);
       if (!result.success) {
@@ -690,12 +697,16 @@ const App: React.FC = () => {
       if (decryptedPass) {
         handleLogin(undefined, decryptedPass);
       } else {
+        // Silent failure for automatic attempt, just show 2FA
         setBioFailed(true);
         localStorage.setItem('securepass_force_password', 'true');
       }
     } catch (err: any) {
       setBioFailed(true);
-      setToast(t.biometricError);
+      // Only show toast if it's a real error, not a cancellation
+      if (err?.name !== 'NotAllowedError' && err?.name !== 'AbortError') {
+        setToast(t.biometricError);
+      }
       localStorage.setItem('securepass_force_password', 'true');
     }
   };
@@ -883,14 +894,11 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
             <Icons.Fingerprint className="text-white w-10 h-10" />
           </div>
           <h1 className={`text-2xl font-extrabold tracking-tight mb-2 ${isDark ? 'text-white' : 'text-black'}`}>{t.biometricUnlock}</h1>
-          <p className="text-gray-500 text-xs font-medium mb-8">{t.biometricHint}</p>
-          
-          <button 
-            onClick={() => handleBiometricLogin()}
-            className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <Icons.Unlock size={18} /> {t.unlockVault}
-          </button>
+          <p className="text-gray-500 text-xs font-medium">{t.biometricHint}</p>
+          <div className="mt-8 flex items-center gap-2 text-[#4CAF50] font-bold text-[10px] uppercase tracking-widest">
+            <Icons.Loader2 className="animate-spin" size={14} />
+            <span>Đang xác thực...</span>
+          </div>
         </div>
       </div>
     );
