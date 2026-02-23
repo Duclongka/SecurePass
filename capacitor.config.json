@@ -1,0 +1,6 @@
+{
+  "appId": "com.securepass.app",
+  "appName": "SecurePass",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
