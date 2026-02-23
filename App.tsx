@@ -876,30 +876,27 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
   if (!show2FA) {
     return (
       <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
-        <div className={`w-full max-w-sm rounded-[2.5rem] p-10 border shadow-2xl transition-colors duration-500 flex flex-col items-center text-center ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
-          <div className="w-20 h-20 bg-[#4CAF50] rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-[#4CAF50]/20 animate-pulse">
-            <Icons.Fingerprint className="text-white w-10 h-10" />
-          </div>
-          <h1 className={`text-2xl font-extrabold tracking-tight mb-2 ${isDark ? 'text-white' : 'text-black'}`}>{t.biometricUnlock}</h1>
-          <p className="text-gray-500 text-xs font-medium mb-8">Vui lòng xác thực vân tay hoặc khuôn mặt để tiếp tục</p>
-          
-          <button 
+        <div className={`w-full max-w-sm rounded-[2.5rem] p-12 border shadow-2xl transition-colors duration-500 flex flex-col items-center text-center ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
+          <div 
             onClick={() => handleBiometricLogin()}
-            className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 mb-4"
+            className="w-24 h-24 bg-[#4CAF50] rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl shadow-[#4CAF50]/30 animate-pulse cursor-pointer active:scale-90 transition-transform"
           >
-            <Icons.Unlock size={18} /> Thử lại
-          </button>
-
-          <button 
-            onClick={() => {
-              setBioFailed(true);
-              localStorage.setItem('securepass_force_password', 'true');
-            }}
-            className="text-gray-500 text-xs font-bold uppercase tracking-widest hover:text-[#4CAF50] transition-colors"
-          >
-            Sử dụng Mật khẩu & File Khóa
-          </button>
+            <Icons.Fingerprint className="text-white w-12 h-12" />
+          </div>
+          <h1 className={`text-2xl font-black tracking-tight mb-3 ${isDark ? 'text-white' : 'text-black'}`}>{t.biometricUnlock}</h1>
+          <p className="text-gray-500 text-sm font-medium max-w-[200px] leading-relaxed">Chạm vào biểu tượng để xác thực và truy cập kho lưu trữ</p>
+          
+          <div className="mt-12 w-full h-1 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+            <div className="h-full bg-[#4CAF50] w-1/3 animate-[loading_2s_infinite_linear]"></div>
+          </div>
         </div>
+        
+        <style dangerouslySetInnerHTML={{ __html: `
+          @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(300%); }
+          }
+        `}} />
       </div>
     );
   }
