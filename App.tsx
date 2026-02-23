@@ -19,6 +19,7 @@ const translations = {
     contactInfo: 'Zalo/Phone: 0964 855 899',
     unlockVault: 'Unlock',
     masterPassword: 'Master Password',
+    biometricUnlock: 'Biometric Login',
     chooseDatabase: 'Select Data File',
     unlockSubtitle: 'Local encrypted vault',
     searchPlaceholder: 'Search...',
@@ -155,8 +156,6 @@ const translations = {
     biometricError: 'Biometric error.',
     success: 'Success!',
     saveKeyWarning: 'Please keep your key file safe!',
-    biometricUnlock: 'Biometric Unlock',
-    biometricHint: 'Please authenticate using fingerprint or face to continue',
     passwordStrength: 'Password Strength',
     saveKeyFileBtn: 'Save Key File',
     keyFileInstruction: 'Please save this key file in a safe place. You will need it to unlock your vault on new devices.',
@@ -190,8 +189,7 @@ const translations = {
     contactInfo: 'Liên hệ sđt/zalo: 0964 855 899',
     unlockVault: 'Mở khóa',
     masterPassword: 'Mật khẩu chính',
-    biometricUnlock: 'Mở khóa Sinh trắc học',
-    biometricHint: 'Vui lòng xác thực vân tay hoặc khuôn mặt để tiếp tục',
+    biometricUnlock: 'Vân tay / FaceID',
     chooseDatabase: 'Chọn tệp dữ liệu',
     unlockSubtitle: 'Kho lưu trữ cục bộ',
     searchPlaceholder: 'Tìm kiếm...',
@@ -425,7 +423,6 @@ const App: React.FC = () => {
 
   const [settingsSubView, setSettingsSubView] = useState<'main' | 'data' | 'folders' | 'security' | 'theme' | 'language'>('main');
   const [isLocked, setIsLocked] = useState(true);
-  const [bioFailed, setBioFailed] = useState(false);
   const [masterPassword, setMasterPassword] = useState('');
   const [uploadedKeyFile, setUploadedKeyFile] = useState<any>(null);
   const [isKeyFileRemembered, setIsKeyFileRemembered] = useState(() => !!localStorage.getItem('securepass_master_hash'));
@@ -487,7 +484,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const forcePassword = localStorage.getItem('securepass_force_password');
     if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_vault') && !forcePassword) {
-      const timer = setTimeout(() => handleBiometricLogin(), 300);
+      const timer = setTimeout(() => handleBiometricLogin(), 100);
       return () => clearTimeout(timer);
     }
   }, [isLocked, settings.biometricEnabled]);
@@ -536,8 +533,6 @@ const App: React.FC = () => {
 
   const handleLock = () => {
     setIsLocked(true);
-    setBioFailed(false);
-    localStorage.removeItem('securepass_force_password');
     setEntries([]);
     setMasterPassword('');
     setView('login');
@@ -582,7 +577,7 @@ const App: React.FC = () => {
 
   const [isUnlocking, setIsUnlocking] = useState(false);
 
-  const handleLogin = async (e?: React.FormEvent, providedPass?: string) => {
+  const handleLogin = async (e?: React.FormEvent, providedPass?: string, isBiometric: boolean = false) => {
     e?.preventDefault();
     if (isUnlocking) return;
     
@@ -591,7 +586,7 @@ const App: React.FC = () => {
     // If no password provided, try to use remembered password if key file is present
     if (!passToUse) {
       const remembered = localStorage.getItem('securepass_remembered_mp');
-      if (remembered && uploadedKeyFile) {
+      if (remembered && (uploadedKeyFile || isBiometric)) {
         passToUse = remembered;
       }
     }
@@ -637,31 +632,27 @@ const App: React.FC = () => {
         }
       }
 
-      // Use uploaded key file or fallback to stored one (essential for biometric/seamless login)
-      let keyFileToUse = "";
-      if (uploadedKeyFile) {
-        keyFileToUse = JSON.stringify(uploadedKeyFile);
-      } else {
-        const storedKey = localStorage.getItem('securepass_master_hash');
-        if (storedKey) {
-          keyFileToUse = storedKey;
-        } else {
-          setToast(t.chooseKeyFile);
-          setIsUnlocking(false);
-          return;
-        }
-      }
-
-      const result = await SecurityService.verifyAccess(passToUse, keyFileToUse);
-      if (!result.success) {
-        setLoginError(t.wrongPassword);
-        setToast(t.wrongPassword);
+      // Enforce manual key file selection for 2FA, unless it's biometric
+      if (!isBiometric && !uploadedKeyFile) {
+        setToast(t.chooseKeyFile);
+        setIsUnlocking(false);
         return;
       }
 
-      // Update stored key file with the one just used
-      localStorage.setItem('securepass_master_hash', keyFileToUse);
-      localStorage.setItem('securepass_remembered_mp', passToUse);
+      if (!isBiometric) {
+        const keyFileToUse = JSON.stringify(uploadedKeyFile);
+
+        const result = await SecurityService.verifyAccess(passToUse, keyFileToUse);
+        if (!result.success) {
+          setLoginError(t.wrongPassword);
+          setToast(t.wrongPassword);
+          return;
+        }
+
+        // Update stored key file with the one just used
+        localStorage.setItem('securepass_master_hash', keyFileToUse);
+        localStorage.setItem('securepass_remembered_mp', passToUse);
+      }
 
       const encryptedVault = localStorage.getItem('securepass_vault');
       let decryptedEntries: PasswordEntry[] = [];
@@ -695,19 +686,16 @@ const App: React.FC = () => {
     try {
       const decryptedPass = await SecurityService.authenticateBiometric();
       if (decryptedPass) {
-        handleLogin(undefined, decryptedPass);
+        handleLogin(undefined, decryptedPass, true);
       } else {
-        // Silent failure for automatic attempt, just show 2FA
-        setBioFailed(true);
         localStorage.setItem('securepass_force_password', 'true');
+        setIsLocked(true);
+        setView('login');
       }
     } catch (err: any) {
-      setBioFailed(true);
-      // Only show toast if it's a real error, not a cancellation
-      if (err?.name !== 'NotAllowedError' && err?.name !== 'AbortError') {
-        setToast(t.biometricError);
-      }
       localStorage.setItem('securepass_force_password', 'true');
+      setIsLocked(true);
+      setView('login');
     }
   };
 
@@ -823,7 +811,7 @@ const App: React.FC = () => {
       className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-black'}`}
     >
       {isLocked ? (
-        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} loginError={loginError} bioFailed={bioFailed} setBioFailed={setBioFailed} settings={settings} />
+        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} loginError={loginError} />
       ) : (
         <div className="flex-1 flex flex-col relative overflow-hidden h-full">
           {view === 'vault' && <VaultScreen t={t} isDark={isDark} entries={entries} searchQuery={searchQuery} setSearchQuery={setSearchQuery} activeCategory={activeCategory} setActiveCategory={setActiveCategory} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} settings={settings} setView={setView} />}
@@ -866,15 +854,15 @@ const App: React.FC = () => {
   );
 };
 
-const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isVerifyingImport, isUnlocking, loginError, bioFailed, setBioFailed, settings }: any) => {
+const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isVerifyingImport, isUnlocking, loginError }: any) => {
   const [showKeyError, setShowKeyError] = useState(false);
   const hasBioSetup = !!localStorage.getItem('securepass_biometric_vault');
   
-  // Show 2FA only if biometric is not enabled, not setup, or has failed
-  const show2FA = bioFailed || !settings.biometricEnabled || !hasBioSetup;
+  // Always show password for 2FA (Key File + Master Password)
+  const showPasswordField = true; 
 
   // CRITICAL: Only show "Selected" if a file was actually uploaded in this session
-  const isFileActuallyUploaded = !!uploadedKeyFile && typeof uploadedKeyFile === 'object' && Object.keys(uploadedKeyFile).length > 0;
+  const isFileActuallyUploaded = uploadedKeyFile !== null && uploadedKeyFile !== undefined && typeof uploadedKeyFile === 'object' && Object.keys(uploadedKeyFile).length > 0;
 
   const onUnlockClick = (e: React.FormEvent) => {
     e.preventDefault();
@@ -885,24 +873,6 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
     setShowKeyError(false);
     handleLogin(e);
   };
-
-  if (!show2FA) {
-    return (
-      <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
-        <div className={`w-full max-w-sm rounded-[2.5rem] p-10 border shadow-2xl transition-colors duration-500 flex flex-col items-center text-center ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
-          <div className="w-20 h-20 bg-[#4CAF50] rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-[#4CAF50]/20 animate-pulse">
-            <Icons.Fingerprint className="text-white w-10 h-10" />
-          </div>
-          <h1 className={`text-2xl font-extrabold tracking-tight mb-2 ${isDark ? 'text-white' : 'text-black'}`}>{t.biometricUnlock}</h1>
-          <p className="text-gray-500 text-xs font-medium">{t.biometricHint}</p>
-          <div className="mt-8 flex items-center gap-2 text-[#4CAF50] font-bold text-[10px] uppercase tracking-widest">
-            <Icons.Loader2 className="animate-spin" size={14} />
-            <span>Đang xác thực...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
@@ -943,7 +913,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
             </div>
           </div>
 
-          <button type="submit" disabled={isUnlocking || (!masterPassword)} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+          <button type="submit" disabled={isUnlocking || (!masterPassword && showPasswordField)} className="w-full bg-[#4CAF50] hover:bg-[#45a049] text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
             {isUnlocking ? <Icons.Loader2 className="animate-spin" size={18} /> : <Icons.Unlock size={18} />} 
             {isUnlocking ? 'Đang xác thực...' : t.unlockVault}
           </button>
