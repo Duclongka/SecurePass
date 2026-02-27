@@ -78,4 +78,5 @@ export interface SettingsState {
   folders: string[];
   subFolders: Record<string, string[]>; // Mapping of root folder to sub-folders
   hasMasterPassword?: boolean;
+  pinEnabled?: boolean;
 }

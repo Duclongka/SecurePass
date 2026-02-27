@@ -49,7 +49,9 @@ import {
   Loader2,
   CircleCheck,
   FileCheck,
-  ArrowRight
+  ArrowRight,
+  Delete,
+  LogOut
 } from 'lucide-react';
 
 export {
@@ -101,5 +103,7 @@ export {
   Loader2, 
   CircleCheck, 
   FileCheck,
-  ArrowRight
+  ArrowRight,
+  Delete,
+  LogOut
 };

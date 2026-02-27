@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from './components/Icons';
 import { PasswordEntry, AppView, SettingsState, EntryType } from './types';
 import { generatePassword, calculateStrength, getStrengthColor } from './utils/passwordUtils';
@@ -440,6 +441,7 @@ const App: React.FC = () => {
   const [deleteClickCount, setDeleteClickCount] = useState<{ id: string; count: number }>({ id: '', count: 0 });
   const [isMasterModalOpen, setIsMasterModalOpen] = useState(false);
 
+  const [genMode, setGenMode] = useState<'password' | 'wifi' | 'share' | 'link'>('password');
   const [genPass, setGenPass] = useState('');
   const [genConfig, setGenConfig] = useState({
     length: 16,
@@ -464,6 +466,7 @@ const App: React.FC = () => {
         autoLockEnabled: true,
         clearClipboardEnabled: true,
         biometricEnabled: false,
+        pinEnabled: false,
         language: 'vi',
         theme: 'dark',
         groups: ['Banking', 'Shopping', 'Study'],
@@ -473,21 +476,38 @@ const App: React.FC = () => {
       };
       return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
     } catch {
-      return { folders: DEFAULT_FOLDERS, subFolders: DEFAULT_SUBFOLDERS, language: 'vi', theme: 'dark' } as any;
+      return { folders: DEFAULT_FOLDERS, subFolders: DEFAULT_SUBFOLDERS, language: 'vi', theme: 'dark', pinEnabled: false } as any;
     }
   });
 
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [showPinLogin, setShowPinLogin] = useState(false);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinModalMode, setPinModalMode] = useState<'setup' | 'change'>('setup');
   const isDark = settings.theme === 'dark';
   const t = translations[settings.language] || translations.vi;
 
   useEffect(() => {
-    const forcePassword = localStorage.getItem('securepass_force_password');
-    if (isLocked && settings.biometricEnabled && localStorage.getItem('securepass_biometric_vault') && !forcePassword) {
-      const timer = setTimeout(() => handleBiometricLogin(), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isLocked, settings.biometricEnabled]);
+    const autoUnlock = async () => {
+      const forcePassword = localStorage.getItem('securepass_force_password');
+      const deviceRecognized = localStorage.getItem('securepass_device_recognized');
+      
+      if (!isLocked || forcePassword || !deviceRecognized) return;
+
+      if (settings.biometricEnabled && localStorage.getItem('securepass_biometric_vault')) {
+        const available = await SecurityService.isBiometricAvailable();
+        if (available) {
+          handleBiometricLogin();
+          return;
+        }
+      }
+      
+      if (settings.pinEnabled && localStorage.getItem('securepass_pin_vault')) {
+        setShowPinLogin(true);
+      }
+    };
+    autoUnlock();
+  }, [isLocked, settings.biometricEnabled, settings.pinEnabled]);
 
   useEffect(() => {
     if (isLocked || !settings.autoLockEnabled) return;
@@ -541,22 +561,54 @@ const App: React.FC = () => {
     setSettingsSubView('main');
   };
 
-  const handleSwipeBack = () => {
+  const handleSwipe = (direction: 'left' | 'right') => {
     if (isLocked) return;
-    
-    if (view === 'settings') {
-      if (settingsSubView !== 'main') {
-        setSettingsSubView('main');
-      } else {
-        setView('vault');
+
+    // Back navigation (Swipe Right)
+    if (direction === 'right') {
+      if (selectedEntry || isAdding || isEditing) {
+        setSelectedEntry(null);
+        setIsAdding(null);
+        setIsEditing(null);
+        return;
       }
-    } else if (view === 'generator') {
-      setView('vault');
-    } else if (view === 'vault') {
-      if (activeCategory) {
+      if (view === 'settings' && settingsSubView !== 'main') {
+        setSettingsSubView('main');
+        return;
+      }
+      if (view === 'vault' && activeCategory) {
         setActiveCategory(null);
-      } else if (searchQuery) {
-        setSearchQuery('');
+        return;
+      }
+    }
+
+    // Tab navigation
+    const modes: ('password' | 'wifi' | 'share' | 'link')[] = ['password', 'wifi', 'share', 'link'];
+    
+    if (direction === 'right') {
+      if (view === 'settings') {
+        setView('generator');
+        setGenMode('link');
+      } else if (view === 'generator') {
+        const idx = modes.indexOf(genMode);
+        if (idx > 0) {
+          setGenMode(modes[idx - 1]);
+        } else {
+          setView('vault');
+        }
+      }
+    } else { // Swipe Left
+      if (view === 'vault') {
+        setView('generator');
+        setGenMode('password');
+      } else if (view === 'generator') {
+        const idx = modes.indexOf(genMode);
+        if (idx < modes.length - 1) {
+          setGenMode(modes[idx + 1]);
+        } else {
+          setView('settings');
+          setSettingsSubView('main');
+        }
       }
     }
   };
@@ -569,24 +621,25 @@ const App: React.FC = () => {
     if (touchStartX.current === null) return;
     const touchEndX = e.changedTouches[0].clientX;
     const diff = touchEndX - touchStartX.current;
-    if (diff > 100) { // Swipe right threshold
-      handleSwipeBack();
+    if (Math.abs(diff) > 80) { // Threshold
+      handleSwipe(diff > 0 ? 'right' : 'left');
     }
     touchStartX.current = null;
   };
 
   const [isUnlocking, setIsUnlocking] = useState(false);
 
-  const handleLogin = async (e?: React.FormEvent, providedPass?: string, isBiometric: boolean = false) => {
+  const handleLogin = async (e?: React.FormEvent, providedPass?: string, isBiometric: boolean = false, providedKeyFile?: any) => {
     e?.preventDefault();
     if (isUnlocking) return;
     
     let passToUse = providedPass || masterPassword;
+    const keyFileToUseData = providedKeyFile || uploadedKeyFile;
     
     // If no password provided, try to use remembered password if key file is present
     if (!passToUse) {
       const remembered = localStorage.getItem('securepass_remembered_mp');
-      if (remembered && (uploadedKeyFile || isBiometric)) {
+      if (remembered && (keyFileToUseData || isBiometric)) {
         passToUse = remembered;
       }
     }
@@ -633,14 +686,14 @@ const App: React.FC = () => {
       }
 
       // Enforce manual key file selection for 2FA, unless it's biometric
-      if (!isBiometric && !uploadedKeyFile) {
+      if (!isBiometric && !keyFileToUseData) {
         setToast(t.chooseKeyFile);
         setIsUnlocking(false);
         return;
       }
 
       if (!isBiometric) {
-        const keyFileToUse = JSON.stringify(uploadedKeyFile);
+        const keyFileToUse = JSON.stringify(keyFileToUseData);
 
         const result = await SecurityService.verifyAccess(passToUse, keyFileToUse);
         if (!result.success) {
@@ -672,6 +725,7 @@ const App: React.FC = () => {
       setMasterPassword(passToUse);
       setSettings(prev => ({ ...prev, hasMasterPassword: true }));
       localStorage.removeItem('securepass_force_password');
+      localStorage.setItem('securepass_device_recognized', 'true');
       setLoginError(null);
     } catch (err) {
       console.error("Login error", err);
@@ -684,18 +738,45 @@ const App: React.FC = () => {
 
   const handleBiometricLogin = async () => {
     try {
+      const available = await SecurityService.isBiometricAvailable();
+      if (!available) {
+        if (settings.pinEnabled) setShowPinLogin(true);
+        return;
+      }
       const decryptedPass = await SecurityService.authenticateBiometric();
       if (decryptedPass) {
         handleLogin(undefined, decryptedPass, true);
+      } else {
+        if (settings.pinEnabled) {
+          setShowPinLogin(true);
+        } else {
+          localStorage.setItem('securepass_force_password', 'true');
+          setIsLocked(true);
+          setView('login');
+        }
+      }
+    } catch (err: any) {
+      if (settings.pinEnabled) {
+        setShowPinLogin(true);
       } else {
         localStorage.setItem('securepass_force_password', 'true');
         setIsLocked(true);
         setView('login');
       }
-    } catch (err: any) {
-      localStorage.setItem('securepass_force_password', 'true');
-      setIsLocked(true);
-      setView('login');
+    }
+  };
+
+  const handlePinLogin = async (pin: string) => {
+    try {
+      const decryptedPass = await SecurityService.authenticatePin(pin);
+      if (decryptedPass) {
+        handleLogin(undefined, decryptedPass, true);
+        setShowPinLogin(false);
+      } else {
+        setToast("Mã PIN không chính xác");
+      }
+    } catch (err) {
+      setToast("Lỗi xác thực mã PIN");
     }
   };
 
@@ -718,8 +799,14 @@ const App: React.FC = () => {
         const content = JSON.parse(event.target?.result as string);
         if (content.type !== 'MASTER_KEY_FILE') throw new Error();
         setUploadedKeyFile(content);
-        localStorage.setItem('securepass_force_password', 'true');
-        setToast(t.keyFileDetected);
+        
+        const remembered = localStorage.getItem('securepass_remembered_mp');
+        if (remembered && !isVerifyingImport) {
+          handleLogin(undefined, remembered, false, content);
+        } else {
+          localStorage.setItem('securepass_force_password', 'true');
+          setToast(t.keyFileDetected);
+        }
       } catch {
         setToast('File lỗi hoặc không đúng định dạng');
         setUploadedKeyFile(null);
@@ -757,6 +844,7 @@ const App: React.FC = () => {
           setPendingImportData(content);
           setIsVerifyingImport(true);
           localStorage.setItem('securepass_force_password', 'true');
+          localStorage.removeItem('securepass_device_recognized');
           setToast("Vui lòng nhập mật khẩu của dữ liệu mới.");
           handleLock();
         } else { setToast(t.importFileErrorMsg); }
@@ -811,12 +899,23 @@ const App: React.FC = () => {
       className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-black'}`}
     >
       {isLocked ? (
-        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} loginError={loginError} />
+        <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} loginError={loginError} showPinLogin={showPinLogin} setShowPinLogin={setShowPinLogin} handlePinLogin={handlePinLogin} />
       ) : (
         <div className="flex-1 flex flex-col relative overflow-hidden h-full">
-          {view === 'vault' && <VaultScreen t={t} isDark={isDark} entries={entries} searchQuery={searchQuery} setSearchQuery={setSearchQuery} activeCategory={activeCategory} setActiveCategory={setActiveCategory} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} settings={settings} setView={setView} />}
-          {view === 'generator' && <GeneratorScreen t={t} isDark={isDark} genPass={genPass} genConfig={genConfig} setGenConfig={setGenConfig} handleGenerator={handleGenerator} copy={copy} genHistory={genHistory} showGenHistory={showGenHistory} setShowGenHistory={setShowGenHistory} setToast={setToast} onSave={(d: any) => { const n = { ...d, id: Math.random().toString(36).substring(2, 9), createdAt: Date.now(), strength: calculateStrength(d.password || '') }; const up = [n, ...entries]; setEntries(up); saveVault(up); }} />}
-          {view === 'settings' && <SettingsScreen t={t} isDark={isDark} settings={settings} setSettings={setSettings} handleLock={handleLock} setView={setView} setIsMasterModalOpen={setIsMasterModalOpen} masterPassword={masterPassword} handleImport={handleImport} handleExport={handleExport} setToast={setToast} subView={settingsSubView} setSubView={setSettingsSubView} showAllFolders={showAllFolders} setShowAllFolders={setShowAllFolders} showAllSubFolders={showAllSubFolders} setShowAllSubFolders={setShowAllSubFolders} />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={view + (view === 'generator' ? genMode : '')}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="flex-1 flex flex-col overflow-hidden"
+            >
+              {view === 'vault' && <VaultScreen t={t} isDark={isDark} entries={entries} searchQuery={searchQuery} setSearchQuery={setSearchQuery} activeCategory={activeCategory} setActiveCategory={setActiveCategory} setSelectedEntry={setSelectedEntry} setIsEditing={setIsEditing} copy={copy} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} settings={settings} setView={setView} />}
+              {view === 'generator' && <GeneratorScreen t={t} isDark={isDark} genPass={genPass} genConfig={genConfig} setGenConfig={setGenConfig} handleGenerator={handleGenerator} copy={copy} genHistory={genHistory} showGenHistory={showGenHistory} setShowGenHistory={setShowGenHistory} setToast={setToast} genMode={genMode} setGenMode={setGenMode} onSave={(d: any) => { const n = { ...d, id: Math.random().toString(36).substring(2, 9), createdAt: Date.now(), strength: calculateStrength(d.password || '') }; const up = [n, ...entries]; setEntries(up); saveVault(up); }} />}
+              {view === 'settings' && <SettingsScreen t={t} isDark={isDark} settings={settings} setSettings={setSettings} handleLock={handleLock} setView={setView} setIsMasterModalOpen={setIsMasterModalOpen} masterPassword={masterPassword} handleImport={handleImport} handleExport={handleExport} setToast={setToast} subView={settingsSubView} setSubView={setSettingsSubView} showAllFolders={showAllFolders} setShowAllFolders={setShowAllFolders} showAllSubFolders={showAllSubFolders} setShowAllSubFolders={setShowAllSubFolders} setIsPinModalOpen={setIsPinModalOpen} setPinModalMode={setPinModalMode} />}
+            </motion.div>
+          </AnimatePresence>
           
           {showPlusMenu && (
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-6" onClick={() => setShowPlusMenu(false)}>
@@ -849,13 +948,32 @@ const App: React.FC = () => {
         setMasterPassword(np); 
         setSettings(p => ({ ...p, hasMasterPassword: true })); 
       }} masterPassword={masterPassword} />}
+      {isPinModalOpen && (
+        <PinModal 
+          t={t} 
+          isDark={isDark} 
+          onClose={() => setIsPinModalOpen(false)} 
+          mode={pinModalMode}
+          onSave={async (pin: string) => {
+            const result = await SecurityService.setupPin(masterPassword, pin);
+            if (result.success) {
+              setSettings({ ...settings, pinEnabled: true });
+              setToast("Đã thiết lập mã PIN");
+              setIsPinModalOpen(false);
+            } else {
+              setToast("Lỗi thiết lập mã PIN");
+            }
+          }}
+        />
+      )}
       {toast && <div className="fixed top-12 left-1/2 -translate-x-1/2 bg-[#4CAF50] text-white px-6 py-2 rounded-full text-xs font-bold shadow-2xl z-[200] animate-in fade-in slide-in-from-top-10">{toast}</div>}
     </div>
   );
 };
 
-const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isVerifyingImport, isUnlocking, loginError }: any) => {
+const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin, handleBiometricLogin, handleKeyFileSelection, setIsMasterModalOpen, uploadedKeyFile, isVerifyingImport, isUnlocking, loginError, showPinLogin, setShowPinLogin, handlePinLogin }: any) => {
   const [showKeyError, setShowKeyError] = useState(false);
+  const [pinInput, setPinInput] = useState('');
   const hasBioSetup = !!localStorage.getItem('securepass_biometric_vault');
   
   // Always show password for 2FA (Key File + Master Password)
@@ -873,6 +991,80 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
     setShowKeyError(false);
     handleLogin(e);
   };
+
+  const onPinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput.length === 6) {
+      handlePinLogin(pinInput);
+    }
+  };
+
+  if (showPinLogin) {
+    return (
+      <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
+        <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-[#4CAF50] rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-[#4CAF50]/10"><Icons.Shield className="text-white w-8 h-8" /></div>
+            <h1 className={`text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>Mã PIN</h1>
+            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-1">Nhập mã PIN để mở khóa</p>
+          </div>
+          <form onSubmit={onPinSubmit} className="space-y-6">
+            <div className="flex justify-center gap-2">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className={`w-10 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all ${pinInput.length > i ? 'border-[#4CAF50] bg-[#4CAF50]/10' : (isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50')}`}>
+                  {pinInput.length > i ? '•' : ''}
+                </div>
+              ))}
+            </div>
+            <input 
+              autoFocus
+              type="tel"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={pinInput}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9]/g, '');
+                if (val.length <= 6) setPinInput(val);
+                if (val.length === 6) handlePinLogin(val);
+              }}
+              className="absolute opacity-0 pointer-events-none"
+            />
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'clear', 0, 'back'].map((num, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    if (typeof num === 'number') {
+                      if (pinInput.length < 6) {
+                        const newPin = pinInput + num;
+                        setPinInput(newPin);
+                        if (newPin.length === 6) handlePinLogin(newPin);
+                      }
+                    } else if (num === 'clear') {
+                      setPinInput('');
+                    } else if (num === 'back') {
+                      setPinInput(pinInput.slice(0, -1));
+                    }
+                  }}
+                  className={`h-14 rounded-2xl flex items-center justify-center text-lg font-bold active:scale-90 transition-all ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-100 hover:bg-gray-200'}`}
+                >
+                  {num === 'clear' ? <Icons.X size={20}/> : num === 'back' ? <Icons.Delete size={20}/> : num}
+                </button>
+              ))}
+            </div>
+            <button 
+              type="button" 
+              onClick={() => setShowPinLogin(false)} 
+              className="w-full text-gray-500 text-xs font-bold uppercase tracking-widest mt-4"
+            >
+              Sử dụng Mật khẩu chủ
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
@@ -1056,6 +1248,120 @@ const EntryItem = ({ isDark, entry, t, setSelectedEntry, setIsEditing, copy, del
       <div className="flex items-center gap-1 shrink-0">
         <button onClick={(e) => { e.stopPropagation(); setIsEditing(entry); }} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.Pencil size={18} /></button>
         <button onClick={(e) => { e.stopPropagation(); deleteEntry(entry.id); }} className={`p-2 transition-all ${deleteClickCount.id === entry.id ? 'text-red-500' : 'text-gray-500'}`}><Icons.Trash2 size={18} /></button>
+      </div>
+    </div>
+  );
+};
+
+const PinModal = ({ t, isDark, onClose, onSave, masterPassword, mode = 'setup' }: any) => {
+  const [step, setStep] = useState(mode === 'change' ? 1 : 2); // 1: Old PIN, 2: New PIN, 3: Confirm PIN
+  const [oldPin, setOldPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleNext = () => {
+    if (step === 1) {
+      SecurityService.authenticatePin(oldPin).then(res => {
+        if (res) setStep(2);
+        else setError("Mã PIN cũ không chính xác");
+      });
+    } else if (step === 2) {
+      if (newPin.length === 6 && /^\d+$/.test(newPin)) {
+        setStep(3);
+        setError(null);
+      } else {
+        setError("Mã PIN phải gồm 6 chữ số");
+      }
+    } else if (step === 3) {
+      if (newPin === confirmPin) {
+        onSave(newPin);
+      } else {
+        setError("Mã PIN xác nhận không khớp");
+      }
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-center justify-center p-6 animate-in fade-in">
+      <div className={`w-full max-w-sm rounded-[2.5rem] border p-8 space-y-6 ${isDark ? 'bg-[#121212] border-white/10' : 'bg-white border-black/5'}`}>
+        <div className="flex justify-between items-center">
+          <h2 className={`text-xl font-black ${!isDark ? 'text-black' : ''}`}>
+            {step === 1 ? "Nhập mã PIN cũ" : step === 2 ? "Thiết lập mã PIN mới" : "Xác nhận mã PIN mới"}
+          </h2>
+          <button onClick={onClose} className="text-gray-500"><Icons.X size={24}/></button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-center gap-2">
+            {[...Array(6)].map((_, i) => {
+              const val = step === 1 ? oldPin : step === 2 ? newPin : confirmPin;
+              return (
+                <div key={i} className={`w-10 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all ${val.length > i ? 'border-[#4CAF50] bg-[#4CAF50]/10' : (isDark ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50')}`}>
+                  {val.length > i ? '•' : ''}
+                </div>
+              );
+            })}
+          </div>
+
+          <input 
+            autoFocus
+            type="tel"
+            pattern="[0-9]*"
+            maxLength={6}
+            value={step === 1 ? oldPin : step === 2 ? newPin : confirmPin}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9]/g, '');
+              if (val.length <= 6) {
+                if (step === 1) setOldPin(val);
+                else if (step === 2) setNewPin(val);
+                else setConfirmPin(val);
+              }
+            }}
+            className="absolute opacity-0 pointer-events-none"
+          />
+
+          {error && <p className="text-[10px] text-red-500 font-bold text-center">{error}</p>}
+
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'clear', 0, 'back'].map((num, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  const currentVal = step === 1 ? oldPin : step === 2 ? newPin : confirmPin;
+                  if (typeof num === 'number') {
+                    if (currentVal.length < 6) {
+                      const newVal = currentVal + num;
+                      if (step === 1) setOldPin(newVal);
+                      else if (step === 2) setNewPin(newVal);
+                      else setConfirmPin(newVal);
+                    }
+                  } else if (num === 'clear') {
+                    if (step === 1) setOldPin('');
+                    else if (step === 2) setNewPin('');
+                    else setConfirmPin('');
+                  } else if (num === 'back') {
+                    if (step === 1) setOldPin(oldPin.slice(0, -1));
+                    else if (step === 2) setNewPin(newPin.slice(0, -1));
+                    else setConfirmPin(confirmPin.slice(0, -1));
+                  }
+                }}
+                className={`h-14 rounded-2xl flex items-center justify-center text-lg font-bold active:scale-90 transition-all ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-100 hover:bg-gray-200'}`}
+              >
+                {num === 'clear' ? <Icons.X size={20}/> : num === 'back' ? <Icons.Delete size={20}/> : num}
+              </button>
+            ))}
+          </div>
+
+          <button 
+            disabled={(step === 1 ? oldPin : step === 2 ? newPin : confirmPin).length !== 6}
+            onClick={handleNext}
+            className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-[#4CAF50]/20 disabled:opacity-50"
+          >
+            {step === 3 ? "Hoàn thành" : "Tiếp theo"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1328,7 +1634,7 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, settings, 
   );
 };
 
-const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView, setIsMasterModalOpen, masterPassword, handleImport, handleExport, setToast, subView, setSubView, showAllFolders, setShowAllFolders, showAllSubFolders, setShowAllSubFolders }: any) => {
+const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView, setIsMasterModalOpen, masterPassword, handleImport, handleExport, setToast, subView, setSubView, showAllFolders, setShowAllFolders, showAllSubFolders, setShowAllSubFolders, setIsPinModalOpen, setPinModalMode }: any) => {
   const [newF, setNewF] = useState('');
   const [newSub, setNewSub] = useState('');
   const [selectedRoot, setSelectedRoot] = useState('');
@@ -1349,12 +1655,14 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
           { id: 'security', icon: <Icons.Shield size={18}/>, label: t.securitySettings }, 
           { id: 'theme', icon: <Icons.Monitor size={18}/>, label: t.themeLabel }, 
           { id: 'language', icon: <Icons.Globe size={18}/>, label: t.languageLabel }].map((item) => (
-          <button key={item.id} onClick={() => setSubView(item.id as any)} className="w-full flex items-center justify-between p-5 hover:bg-[#4CAF50]/5 transition-all">
-            <div className="flex items-center gap-4"><div className="text-[#4CAF50]">{item.icon}</div><span className={`text-sm font-bold ${!isDark ? 'text-black' : ''}`}>{item.label}</span></div><Icons.ChevronRight size={18} className="text-gray-600" />
+          <button key={item.id} onClick={() => setSubView(item.id as any)} className={`w-full flex items-center justify-between p-6 transition-all active:bg-[#4CAF50]/10 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} border-b ${isDark ? 'border-white/5' : 'border-gray-100'}`}>
+            <div className="flex items-center gap-4"><div className="text-[#4CAF50]">{item.icon}</div><span className={`text-xs font-bold ${!isDark ? 'text-black' : ''}`}>{item.label}</span></div><Icons.ChevronRight size={18} className="text-gray-500" />
           </button>
         ))}
       </div>
-      <button onClick={handleLock} className={`w-full font-black text-[10px] uppercase tracking-[0.3em] py-5 rounded-3xl border active:scale-95 transition-all ${isDark ? 'bg-white/5 text-gray-500 border-white/5' : 'bg-gray-200 text-black border-gray-300 shadow-sm'}`}>LOG OUT / LOCK APP</button>
+      <button onClick={handleLock} className={`w-full flex items-center justify-center gap-2 p-6 rounded-[2.5rem] font-black uppercase tracking-widest text-xs transition-all border ${isDark ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-red-50 border-red-100 text-red-600 shadow-sm'}`}>
+        <Icons.LogOut size={16} /> {t.lockVault}
+      </button>
     </div>
   );
 
@@ -1429,6 +1737,7 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
               {[
                 { label: t.autoLock, key: 'autoLockEnabled' },
                 { label: t.clearClipboard, key: 'clearClipboardEnabled' },
+                { label: 'Sử dụng mã PIN', key: 'pinEnabled' },
                 { label: 'Vân tay / FaceID', key: 'biometricEnabled' }
               ].map(opt => (
                 <div key={opt.key} className="flex items-center justify-between">
@@ -1436,17 +1745,41 @@ const SettingsScreen = ({ t, isDark, settings, setSettings, handleLock, setView,
                   <button onClick={async () => {
                     if(opt.key === 'biometricEnabled') {
                       if (!settings.biometricEnabled) {
+                        const available = await SecurityService.isBiometricAvailable();
+                        if (!available) {
+                          setToast("Thiết bị không hỗ trợ sinh trắc học");
+                          return;
+                        }
                         const result = await SecurityService.setupBiometric(masterPassword);
                         if (result.success) {
                           setSettings({...settings, biometricEnabled: true});
                           setToast("Đã thiết lập sinh trắc học");
                         } else {
-                          setToast(result.error === 'NOT_SUPPORTED' ? "Thiết bị không hỗ trợ sinh trắc học" : t.biometricError);
+                          setToast(t.biometricError);
                         }
                       } else {
                         await SecurityService.disableBiometric();
                         setSettings({...settings, biometricEnabled: false});
                         setToast("Đã tắt sinh trắc học");
+                      }
+                    } else if (opt.key === 'pinEnabled') {
+                      if (!settings.pinEnabled) {
+                        const hasPin = !!localStorage.getItem('securepass_pin_vault');
+                        if (!hasPin) {
+                          setPinModalMode('setup');
+                          setIsPinModalOpen(true);
+                        } else {
+                          if (window.confirm("Bạn cần đổi mã PIN không?")) {
+                            setPinModalMode('change');
+                            setIsPinModalOpen(true);
+                          } else {
+                            setSettings({...settings, pinEnabled: true});
+                            setToast("Đã bật mã PIN");
+                          }
+                        }
+                      } else {
+                        setSettings({...settings, pinEnabled: false});
+                        setToast("Đã tắt mã PIN");
                       }
                     } else { 
                       setSettings({...settings, [opt.key]: !(settings as any)[opt.key]}); 
@@ -1551,15 +1884,16 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         <label className="text-[10px] font-black uppercase text-gray-500 ml-1 truncate block">{label}</label>
         <div className="relative w-full">
           <input 
-            disabled={isView} 
+            readOnly={isView} 
             type={inputType} 
             value={value} 
             onChange={e => {
+              if (isView) return;
               let val = e.target.value;
               if (forceUpper) val = val.toUpperCase();
               setLocalData({...localData, [field]: val});
             }} 
-            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base box-border ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'} ${(isPassword || showCopy || onScan) ? 'pr-24' : ''} ${forceUpper ? 'uppercase' : ''}`} 
+            className={`w-full border rounded-2xl py-3 px-4 font-medium outline-none transition-all text-base box-border ${isDark ? 'bg-[#181818] border-white/5 focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'} ${isView ? (isDark ? 'text-white' : 'text-black') : (isDark ? 'text-white' : 'text-black')} ${(isPassword || showCopy || onScan) ? 'pr-24' : ''} ${forceUpper ? 'uppercase' : ''}`} 
             placeholder={placeholder} 
             style={{ maxWidth: '100%' }}
           />
@@ -1595,8 +1929,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
         <div className="max-w-md mx-auto space-y-5">
           {localData.type === 'login' && (
             <>
-              {(!isView || (localData.group && localData.group !== '---')) && localData.group !== 'Mạng Internet' && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
-              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && localData.group !== 'Mạng Internet' && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
+              {(!isView || (localData.group && localData.group !== '---')) && localData.group !== 'Mạng Internet' && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.groupLabel}</label><select disabled={isView} value={localData.group} onChange={e => setLocalData({...localData, group: e.target.value, subGroup: ''})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${isView ? (isDark ? 'text-white opacity-100' : 'text-black opacity-100') : ''}`}><option value="---">---</option>{settings.folders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>}
+              {(!isView || localData.subGroup) && settings.subFolders[localData.group] && localData.group !== 'Mạng Internet' && <div className="space-y-1 animate-in slide-in-from-top-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.subGroupLabel}</label><select disabled={isView} value={localData.subGroup} onChange={e => setLocalData({...localData, subGroup: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${isView ? (isDark ? 'text-white opacity-100' : 'text-black opacity-100') : ''}`}><option value="">{t.chooseSubGroup}</option>{settings.subFolders[localData.group].map(s => <option key={s} value={s}>{s}</option>)}</select></div>}
               {copyableField(t.username, 'username', localData.username || "", "text", t.usernameHint)}
               {copyableField(t.password, 'password', localData.password || "", "password", "")}
               
@@ -1637,7 +1971,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   {(!isView || localData.notes) && (
                     <div className="space-y-1">
                       <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
-                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
+                      <textarea readOnly={isView} rows={3} value={localData.notes} onChange={e => { if(!isView) setLocalData({...localData, notes: e.target.value}) }} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'} ${isView ? (isDark ? 'text-white' : 'text-black') : (isDark ? 'text-white' : 'text-black')}`} />
                     </div>
                   )}
                 </div>
@@ -1646,12 +1980,12 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
           {localData.type === 'card' && (
             <>
-              {(!isView || localData.title) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.title}</label><select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.title ? 'text-gray-400' : ''}`}><option value="">{t.chooseBank}</option>{(settings.subFolders['Ngân hàng'] || []).filter(b => !WALLET_LIST.includes(b)).map(b => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>}
+              {(!isView || localData.title) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.title}</label><select disabled={isView} value={localData.title} onChange={e => setLocalData({...localData, title: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.title ? 'text-gray-400' : ''} ${isView ? (isDark ? 'text-white opacity-100' : 'text-black opacity-100') : ''}`}><option value="">{t.chooseBank}</option>{(settings.subFolders['Ngân hàng'] || []).filter(b => !WALLET_LIST.includes(b)).map(b => <option key={b} value={b}>{b}</option>)}<option value="Khác">Khác</option></select></div>}
               {!WALLET_LIST.includes(localData.title) ? (
                 <>
                   {(!isView || localData.cardType) && (
                     <div className="space-y-5">
-                      {(!isView || localData.cardType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.cardType}</label><select disabled={isView} value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.cardType ? 'text-gray-400' : ''}`}><option value="" disabled>{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>}
+                      {(!isView || localData.cardType) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.cardType}</label><select disabled={isView} value={localData.cardType} onChange={e => setLocalData({...localData, cardType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${!localData.cardType ? 'text-gray-400' : ''} ${isView ? (isDark ? 'text-white opacity-100' : 'text-black opacity-100') : ''}`}><option value="" disabled>{t.chooseCardType}</option><option value="ATM">ATM</option><option value="Visa">Visa</option><option value="Debit">Debit</option><option value="Master">Master</option></select></div>}
                     </div>
                   )}
                   {copyableField(t.cardNumber, 'cardNumber', localData.cardNumber || "", "number", "0000 0000 0000 0000", true, () => setOcrModal({type: 'card', field: 'cardNumber'}))}
@@ -1665,7 +1999,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   {(!isView || localData.notes) && (
                     <div className="space-y-1">
                       <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
-                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
+                      <textarea readOnly={isView} rows={3} value={localData.notes} onChange={e => { if(!isView) setLocalData({...localData, notes: e.target.value}) }} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'} ${isView ? (isDark ? 'text-white' : 'text-black') : (isDark ? 'text-white' : 'text-black')}`} />
                     </div>
                   )}
                 </>
@@ -1673,7 +2007,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                 <>{copyableField(t.phone, 'phone', localData.phone || "", "text", t.phoneHint)}{copyableField(t.password, 'password', localData.password || "", "password", "")}{(!isView || localData.notes) && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
-                    <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
+                    <textarea readOnly={isView} rows={3} value={localData.notes} onChange={e => { if(!isView) setLocalData({...localData, notes: e.target.value}) }} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'} ${isView ? (isDark ? 'text-white' : 'text-black') : (isDark ? 'text-white' : 'text-black')}`} />
                   </div>
                 )}</>
               )}
@@ -1698,7 +2032,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
               {copyableField(t.email, 'email', localData.email || "", "text", t.emailHint)}
               {copyableField(t.postCode, 'postCode', localData.postCode || "", "number", t.postCodeHint)}
               {copyableField(t.address, 'address', localData.address || "", "text", t.addressHint)}
-              {(!isView || localData.notes) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label><textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-[15px] resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'}`} /></div>}
+              {(!isView || localData.notes) && <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label><textarea readOnly={isView} rows={3} value={localData.notes} onChange={e => { if(!isView) setLocalData({...localData, notes: e.target.value}) }} className={`w-full border rounded-2xl p-4 text-[15px] resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'} ${isView ? (isDark ? 'text-white' : 'text-black') : (isDark ? 'text-white' : 'text-black')}`} /></div>}
               <button type="button" onClick={() => setShowQR(!showQR)} className="w-full bg-[#4CAF50] text-white py-4 rounded-3xl font-bold text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"><Icons.Camera size={16} /> {t.createQRCode}</button>
               {showQR && <div className="flex flex-col items-center p-6 bg-white rounded-[2.5rem] animate-in zoom-in-95 shadow-2xl space-y-4">
                   <QRCodeCanvas id="contact-qr-canvas" value={`BEGIN:VCARD\nFN:${localData.fullName}\nTEL:${localData.phone}\nEMAIL:${localData.email}\nADR:;;${localData.address};;;;${localData.postCode}\nEND:VCARD`} size={200} includeMargin level="H" />
@@ -1708,7 +2042,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
           )}
           {localData.type === 'document' && (
             <div className="w-full max-w-full overflow-x-hidden px-1">
-              {(!isView || localData.documentType) && <div className="space-y-1 mb-5"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
+              {(!isView || localData.documentType) && <div className="space-y-1 mb-5"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.docType}</label><select disabled={isView} value={localData.documentType} onChange={e => setLocalData({...localData, documentType: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${isView ? (isDark ? 'text-white opacity-100' : 'text-black opacity-100') : ''}`}><option value="">{t.chooseDocType}</option><option value="id_card">Thẻ Căn cước</option><option value="health_insurance">Thẻ BHYT</option><option value="driving_license">Giấy phép lái xe</option><option value="passport">Sổ Hộ chiếu</option></select></div>}
               {localData.documentType && (
                 <div className="space-y-5 animate-in fade-in w-full">
                   {/* Common document header fields */}
@@ -1726,7 +2060,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                     {(!isView || localData.gender) && (
                       <div className="space-y-1 w-full">
                         <label className="text-[10px] font-black uppercase text-gray-500 ml-1">Giới tính</label>
-                        <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'}`}>
+                        <select disabled={isView} value={localData.gender} onChange={e => setLocalData({...localData, gender: e.target.value})} className={`w-full border rounded-2xl py-3 px-4 outline-none transition-all text-base ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 text-black'} ${isView ? (isDark ? 'text-white opacity-100' : 'text-black opacity-100') : ''}`}>
                           <option value="">--</option>
                           <option value="Nam">Nam</option>
                           <option value="Nữ">Nữ</option>
@@ -1790,7 +2124,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
                   {(localData.documentType === 'passport' || localData.documentType === 'id_card') && (!isView || localData.notes) && (
                     <div className="space-y-1 w-full">
                       <label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.notes}</label>
-                      <textarea disabled={isView} rows={3} value={localData.notes} onChange={e => setLocalData({...localData, notes: e.target.value})} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 text-white focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm text-black focus:border-[#4CAF50]/50'}`} />
+                      <textarea readOnly={isView} rows={3} value={localData.notes} onChange={e => { if(!isView) setLocalData({...localData, notes: e.target.value}) }} className={`w-full border rounded-2xl p-4 text-base resize-none outline-none transition-all ${isDark ? 'bg-[#181818] border-white/5 focus:border-[#4CAF50]/50' : 'bg-white border-gray-200 shadow-sm focus:border-[#4CAF50]/50'} ${isView ? (isDark ? 'text-white' : 'text-black') : (isDark ? 'text-white' : 'text-black')}`} />
                     </div>
                   )}
                 </div>
@@ -1856,9 +2190,8 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
   );
 };
 
-const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast, onSave }: any) => {
+const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGenerator, copy, genHistory, showGenHistory, setShowGenHistory, setToast, onSave, genMode, setGenMode }: any) => {
   const [showQR, setShowQR] = useState(false);
-  const [genMode, setGenMode] = useState<'password' | 'wifi' | 'share' | 'link'>('password');
   const [wifiSsid, setWifiSsid] = useState('');
   const [wifiSecurity, setWifiSecurity] = useState('WPA');
   const [wifiPassword, setWifiPassword] = useState('');

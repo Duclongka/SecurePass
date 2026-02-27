@@ -271,5 +271,31 @@ export class SecurityService {
   static async disableBiometric(): Promise<void> {
     localStorage.removeItem('securepass_biometric_vault');
   }
+
+  // --- PIN Support ---
+  static async setupPin(masterPassword: string, pin: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const encrypted = await this.encryptVault(masterPassword, `PIN_INTERNAL_KEY_${pin}`);
+      localStorage.setItem('securepass_pin_vault', JSON.stringify(encrypted));
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: 'SETUP_FAILED' };
+    }
+  }
+
+  static async authenticatePin(pin: string): Promise<string | null> {
+    try {
+      const pinVault = localStorage.getItem('securepass_pin_vault');
+      if (!pinVault) return null;
+      const decrypted = await this.decryptVault(JSON.parse(pinVault), `PIN_INTERNAL_KEY_${pin}`);
+      return decrypted;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static async disablePin(): Promise<void> {
+    localStorage.removeItem('securepass_pin_vault');
+  }
 }
 
