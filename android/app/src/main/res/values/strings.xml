@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">SecurePass</string>
-    <string name="title_activity_main">SecurePass</string>
+    <string name="title_activity_main">SecurePass-Kho lưu khóa</string>
     <string name="package_name">com.securepass.app</string>
     <string name="custom_url_scheme">com.securepass.app</string>
 </resources>

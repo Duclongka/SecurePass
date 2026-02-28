@@ -2,6 +2,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from './components/Icons';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Haptics, ImpactStyle } from '@capacitor/haptics';
+import { Keyboard } from '@capacitor/keyboard';
 import { PasswordEntry, AppView, SettingsState, EntryType } from './types';
 import { generatePassword, calculateStrength, getStrengthColor } from './utils/passwordUtils';
 import { SecurityService } from './services/SecurityService';
@@ -149,10 +153,10 @@ const translations = {
     chooseClass: '-- Class --',
     detailedInfo: 'Thông tin chi tiết',
     shareQrPlaceholder: 'Enter content...',
-    vaultCorrupted: 'Data corrupted.',
+    vaultCorrupted: 'Password mismatch with local data (You need to Import Data from old device).',
     linkedBank: 'Linked Bank',
     rechargeQr: 'Recharge QR',
-    importFileErrorMsg: 'Invalid file.',
+    importFileErrorMsg: 'Invalid file format (Wrong file type?).',
     wrongPassword: 'Invalid master password.',
     biometricError: 'Biometric error.',
     success: 'Success!',
@@ -160,6 +164,8 @@ const translations = {
     passwordStrength: 'Password Strength',
     saveKeyFileBtn: 'Save Key File',
     keyFileInstruction: 'Please save this key file in a safe place. You will need it to unlock your vault on new devices.',
+    restoreHint: 'Restore from old device?',
+    importNow: 'Import Backup Now',
     detailLogin: 'Login Details',
     detailCard: 'Card Details',
     detailContact: 'Contact Details',
@@ -282,7 +288,7 @@ const translations = {
     noMasterPassYet: 'Bạn chưa có mật khẩu chủ?',
     createOne: 'Tạo mật khẩu chủ',
     chooseKeyFile: 'Chọn file khóa chủ',
-    keyFileDetected: 'Đã chọn File khóa chủ',
+    keyFileDetected: 'Đã nhận diện thiết bị!',
     firstTimeUnlock: 'Nhập Mật khẩu + File Khóa',
     expiryInterval: 'Thời hạn',
     expiredWarning: 'Đã hết hạn!',
@@ -322,14 +328,16 @@ const translations = {
     chooseClass: '-- Hạng --',
     detailedInfo: 'Thông tin chi tiết',
     shareQrPlaceholder: 'Nhập nội dung...',
-    vaultCorrupted: 'Dữ liệu bị lỗi.',
+    vaultCorrupted: 'Mật khẩu không khớp với dữ liệu trên máy này (Bạn cần Nhập Dữ Liệu từ máy cũ).',
     linkedBank: 'Ngân hàng liên kết',
     rechargeQr: 'QR nạp tiền',
-    importFileErrorMsg: 'File không đúng.',
+    importFileErrorMsg: 'File không đúng định dạng (Bạn chọn nhầm file?).',
     wrongPassword: 'Mật khẩu không chính xác!',
     biometricError: 'Lỗi sinh trắc học.',
     success: 'Thành công!',
     saveKeyWarning: 'Vui lòng lưu file khóa cẩn thận!',
+    restoreHint: 'Bạn muốn khôi phục dữ liệu từ máy cũ?',
+    importNow: 'Nhập bản sao lưu ngay',
     detailLogin: 'Chi tiết Đăng nhập',
     detailCard: 'Chi tiết Thẻ',
     detailContact: 'Chi tiết Danh bạ',
@@ -408,6 +416,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<AppView>('login');
 
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
     const backHandler = CapApp.addListener('backButton', ({ canGoBack }) => {
       if (!canGoBack) {
         if (view !== 'vault' && view !== 'login') {
@@ -468,7 +477,7 @@ const App: React.FC = () => {
         biometricEnabled: false,
         pinEnabled: false,
         language: 'vi',
-        theme: 'dark',
+        theme: 'light',
         groups: ['Banking', 'Shopping', 'Study'],
         folders: DEFAULT_FOLDERS,
         subFolders: DEFAULT_SUBFOLDERS,
@@ -476,7 +485,7 @@ const App: React.FC = () => {
       };
       return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
     } catch {
-      return { folders: DEFAULT_FOLDERS, subFolders: DEFAULT_SUBFOLDERS, language: 'vi', theme: 'dark', pinEnabled: false } as any;
+      return { folders: DEFAULT_FOLDERS, subFolders: DEFAULT_SUBFOLDERS, language: 'vi', theme: 'light', pinEnabled: false } as any;
     }
   });
 
@@ -484,8 +493,60 @@ const App: React.FC = () => {
   const [showPinLogin, setShowPinLogin] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinModalMode, setPinModalMode] = useState<'setup' | 'change'>('setup');
+  const lastVaultClick = useRef<number>(0);
   const isDark = settings.theme === 'dark';
   const t = translations[settings.language] || translations.vi;
+
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const showListener = Keyboard.addListener('keyboardWillShow', () => setIsKeyboardVisible(true));
+    const hideListener = Keyboard.addListener('keyboardWillHide', () => setIsKeyboardVisible(false));
+    return () => {
+      showListener.then(l => l.remove());
+      hideListener.then(l => l.remove());
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateStatusBar = async () => {
+      try {
+        await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
+        await StatusBar.setBackgroundColor({ color: isDark ? '#0d0d0d' : '#f5f5f5' });
+      } catch (e) {
+        console.warn('StatusBar not available', e);
+      }
+    };
+    updateStatusBar();
+  }, [isDark]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const backListener = CapApp.addListener('backButton', () => {
+      if (isLocked) return;
+      
+      if (selectedEntry || isAdding || isEditing) {
+        setSelectedEntry(null);
+        setIsAdding(null);
+        setIsEditing(null);
+      } else if (showPlusMenu) {
+        setShowPlusMenu(false);
+      } else if (view === 'settings' && settingsSubView !== 'main') {
+        setSettingsSubView('main');
+      } else if (view === 'vault' && activeCategory) {
+        setActiveCategory(null);
+      } else if (view !== 'vault') {
+        setView('vault');
+      } else {
+        CapApp.exitApp();
+      }
+    });
+
+    return () => {
+      backListener.then(l => l.remove());
+    };
+  }, [isLocked, selectedEntry, isAdding, isEditing, showPlusMenu, view, settingsSubView, activeCategory]);
 
   useEffect(() => {
     const autoUnlock = async () => {
@@ -797,6 +858,11 @@ const App: React.FC = () => {
     reader.onload = async (event) => {
       try {
         const content = JSON.parse(event.target?.result as string);
+        if (content.type === 'SECUREPASS_BACKUP') {
+          setToast('Đây là File Dữ Liệu, không phải File Khóa. Hãy dùng chức năng Nhập Dữ Liệu trong Cài Đặt.');
+          setUploadedKeyFile(null);
+          return;
+        }
         if (content.type !== 'MASTER_KEY_FILE') throw new Error();
         setUploadedKeyFile(content);
         
@@ -892,6 +958,36 @@ const App: React.FC = () => {
     setGenHistory(prev => [p, ...prev].slice(0, 15));
   };
 
+  const handleVaultClick = () => {
+    const now = Date.now();
+    if (now - lastVaultClick.current < 300) {
+      // Double tap
+      setView('vault');
+      setActiveCategory(null);
+      setSearchQuery('');
+      setSelectedEntry(null);
+      setIsAdding(null);
+      setIsEditing(null);
+      setSettingsSubView('main');
+      if (Capacitor.isNativePlatform()) Haptics.impact({ style: ImpactStyle.Medium });
+    } else {
+      setView('vault');
+      if (Capacitor.isNativePlatform()) Haptics.impact({ style: ImpactStyle.Light });
+    }
+    lastVaultClick.current = now;
+  };
+
+  const handleNavClick = (v: AppView) => {
+    setView(v);
+    if (Capacitor.isNativePlatform()) Haptics.impact({ style: ImpactStyle.Light });
+    if (v === 'generator' && !genPass) handleGenerator();
+  };
+
+  const handlePlusMenuToggle = () => {
+    setShowPlusMenu(!showPlusMenu);
+    if (Capacitor.isNativePlatform()) Haptics.impact({ style: ImpactStyle.Light });
+  };
+
   return (
     <div 
       onTouchStart={onTouchStart}
@@ -929,18 +1025,20 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <nav className={`h-16 border-t flex items-center justify-around px-4 sticky bottom-0 z-[70] pb-safe transition-colors duration-500 ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5'}`}>
-            <button onClick={() => setView('vault')} className={`flex flex-col items-center p-3 transition-colors ${view === 'vault' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}><Icons.Database size={24} /></button>
-            <div className="relative"><button onClick={() => setShowPlusMenu(!showPlusMenu)} className={`w-16 h-16 bg-[#4CAF50] rounded-[2rem] flex items-center justify-center text-white shadow-xl -translate-y-6 active:scale-90 transition-all border-4 ${isDark ? 'border-[#0d0d0d]' : 'border-[#f5f5f5]'}`}><Icons.Plus size={32} className={`transition-transform duration-300 ${showPlusMenu ? 'rotate-45' : ''}`} /></button></div>
-            <button onClick={() => { setView('generator'); if(!genPass) handleGenerator(); }} className={`flex flex-col items-center p-3 transition-colors ${view === 'generator' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}><Icons.RefreshCw size={24} /></button>
-          </nav>
+          {!isKeyboardVisible && (
+            <nav className={`h-16 border-t flex items-center justify-around px-4 sticky bottom-0 z-[70] pb-safe transition-colors duration-500 ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-black/5'}`}>
+              <button onClick={handleVaultClick} className={`flex flex-col items-center p-3 transition-colors ${view === 'vault' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}><Icons.Database size={24} /></button>
+              <div className="relative"><button onClick={handlePlusMenuToggle} className={`w-16 h-16 bg-[#4CAF50] rounded-[2rem] flex items-center justify-center text-white shadow-xl -translate-y-6 active:scale-90 transition-all border-4 ${isDark ? 'border-[#0d0d0d]' : 'border-[#f5f5f5]'}`}><Icons.Plus size={32} className={`transition-transform duration-300 ${showPlusMenu ? 'rotate-45' : ''}`} /></button></div>
+              <button onClick={() => handleNavClick('generator')} className={`flex flex-col items-center p-3 transition-colors ${view === 'generator' ? 'text-[#4CAF50]' : (isDark ? 'text-gray-700' : 'text-gray-400')}`}><Icons.RefreshCw size={24} /></button>
+            </nav>
+          )}
 
           {(isAdding || isEditing || selectedEntry) && (
             <EntryModal t={t} isDark={isDark} settings={settings} mode={isEditing ? 'edit' : isAdding ? 'add' : 'view'} entry={isEditing || selectedEntry || undefined} addType={isAdding || undefined} onClose={() => { setIsAdding(null); setIsEditing(null); setSelectedEntry(null); }} onSave={(d: any) => { if (isAdding) { const n = { ...d, id: Math.random().toString(36).substring(2, 9), createdAt: Date.now(), strength: calculateStrength(d.password || ''), isFrequent: true }; const up = [n, ...entries]; setEntries(up); saveVault(up); setIsAdding(null); } else { const up = entries.map(e => e.id === d.id ? { ...d, strength: calculateStrength(d.password || '') } : e); setEntries(up); saveVault(up); setIsEditing(null); } }} copy={copy} setIsEditing={setIsEditing} deleteEntry={deleteEntry} deleteClickCount={deleteClickCount} setToast={setToast} />
           )}
         </div>
       )}
-      {isMasterModalOpen && <MasterPasswordModal t={t} isDark={isDark} settings={settings} setSettings={setSettings} onClose={() => setIsMasterModalOpen(false)} setMasterPassword={async (np: string, kf: any) => { 
+      {isMasterModalOpen && <MasterPasswordModal t={t} isDark={isDark} settings={settings} setSettings={setSettings} handleImport={handleImport} onClose={() => setIsMasterModalOpen(false)} setMasterPassword={async (np: string, kf: any) => { 
         localStorage.setItem('securepass_master_hash', JSON.stringify(kf)); 
         // Always encrypt current entries (empty if locked) with new password
         const enc = await SecurityService.encryptVault(JSON.stringify(entries), np); 
@@ -1367,7 +1465,7 @@ const PinModal = ({ t, isDark, onClose, onSave, masterPassword, mode = 'setup' }
   );
 };
 
-const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, settings, setSettings, masterPassword: currentMP }: any) => {
+const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, settings, setSettings, masterPassword: currentMP, handleImport }: any) => {
   const [step, setStep] = useState(currentMP ? 1 : 2); // Step 1: Verify Old, Step 2: New Pass, Step 3: Success/Download
   const [oldMP, setOldMP] = useState('');
   const [newMP, setNewMP] = useState('');
@@ -1544,6 +1642,25 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, settings, 
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.X size={24}/></button>
         </div>
+
+        {!currentMP && step === 2 && (
+          <div className="p-4 bg-[#4CAF50]/5 border border-[#4CAF50]/20 rounded-2xl flex flex-col gap-2">
+            <p className="text-[10px] text-[#4CAF50] font-bold uppercase">{t.restoreHint}</p>
+            <button 
+              onClick={() => {
+                onClose();
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.vpass';
+                input.onchange = (e: any) => handleImport(e);
+                input.click();
+              }}
+              className="w-full bg-[#4CAF50] text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm"
+            >
+              {t.importNow}
+            </button>
+          </div>
+        )}
 
         {step === 1 ? (
           <div className="space-y-4 animate-in slide-in-from-right">
