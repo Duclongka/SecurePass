@@ -109,17 +109,25 @@ export class SecurityService {
       const backup = JSON.parse(backupFileContent);
       if (backup.type !== 'SECUREPASS_BACKUP') return { success: false, error: 'ERR_INVALID_FILE_TYPE' };
 
-      // Check integrity using the same deterministic fields
+      // Check integrity - try both new deterministic and old stringified methods for backward compatibility
       const encrypted = backup.data;
-      const checksum = CryptoJS.SHA256(encrypted.ciphertext + encrypted.salt + encrypted.iv).toString();
+      if (!encrypted || !encrypted.ciphertext) return { success: false, error: 'ERR_FILE_CORRUPTED' };
+
+      const newChecksum = CryptoJS.SHA256(encrypted.ciphertext + (encrypted.salt || '') + (encrypted.iv || '')).toString();
+      const oldChecksum = CryptoJS.SHA256(JSON.stringify(encrypted)).toString();
       
-      if (checksum !== backup.header.checksum) return { success: false, error: 'ERR_FILE_CORRUPTED' };
+      if (backup.header.checksum !== newChecksum && backup.header.checksum !== oldChecksum) {
+        return { success: false, error: 'ERR_FILE_CORRUPTED' };
+      }
 
       // Try decrypt with provided password
       const decrypted = await this.decryptVault(backup.data, password);
       if (decrypted) {
         try {
-          const parsedData = JSON.parse(decrypted);
+          // Some versions might have trailing null bytes or extra spaces
+          const cleanDecrypted = decrypted.replace(/\0/g, '').trim();
+          const parsedData = JSON.parse(cleanDecrypted);
+          
           // Calculate authHash for the new key file
           const salt = backup.header.salt;
           const iterations = backup.header.iterations || SecurityService.ITERATIONS;
@@ -134,6 +142,8 @@ export class SecurityService {
             iterations
           };
         } catch (e) {
+          // Decryption might have returned garbage that isn't valid JSON
+          console.error("Import JSON parse error", e);
           return { success: false, error: 'ERR_INVALID_PASSWORD' };
         }
       } else {

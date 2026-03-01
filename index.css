@@ -1,2 +1,19 @@
 /* Global styles */
 @import "tailwindcss";
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility mt-safe {
+  margin-top: env(safe-area-inset-top);
+}
+@utility mb-safe {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}

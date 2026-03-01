@@ -773,14 +773,14 @@ const App: React.FC = () => {
     e?.preventDefault();
     if (isUnlocking) return;
     
-    let passToUse = (providedPass || masterPassword || '').trim();
+    let passToUse = providedPass || masterPassword || '';
     const keyFileToUseData = providedKeyFile || uploadedKeyFile;
     
     // If no password provided, try to use remembered password if key file is present
     if (!passToUse) {
       const remembered = localStorage.getItem('securepass_remembered_mp');
       if (remembered && (keyFileToUseData || isBiometric)) {
-        passToUse = remembered.trim();
+        passToUse = remembered;
       }
     }
 
@@ -1074,7 +1074,7 @@ const App: React.FC = () => {
     <div 
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-black'}`}
+      className={`h-[100dvh] w-full flex flex-col overflow-hidden transition-colors duration-500 pt-safe pb-safe ${isDark ? 'bg-[#0d0d0d] text-[#E0E0E0]' : 'bg-[#f5f5f5] text-black'}`}
     >
       {isLocked ? (
         <LoginScreen t={t} isDark={isDark} masterPassword={masterPassword} setMasterPassword={setMasterPassword} handleLogin={handleLogin} handleBiometricLogin={handleBiometricLogin} handleKeyFileSelection={handleKeyFileSelection} setIsMasterModalOpen={setIsMasterModalOpen} uploadedKeyFile={uploadedKeyFile} isVerifyingImport={isVerifyingImport} isUnlocking={isUnlocking} loginError={loginError} showPinLogin={showPinLogin} setShowPinLogin={setShowPinLogin} handlePinLogin={handlePinLogin} />
@@ -1247,7 +1247,7 @@ const LoginScreen = ({ t, isDark, masterPassword, setMasterPassword, handleLogin
   }
 
   return (
-    <div className={`h-full w-full flex flex-col items-center justify-center p-6 transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
+    <div className={`h-full w-full flex flex-col items-center justify-center p-6 pt-safe pb-safe transition-colors duration-500 ${isDark ? 'bg-[#0a0a0a]' : 'bg-[#f0f0f0]'}`}>
       <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl transition-colors duration-500 ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-black/5'}`}>
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-[#4CAF50] rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-[#4CAF50]/10"><Icons.Lock className="text-white w-8 h-8" /></div>
@@ -2113,7 +2113,7 @@ const EntryModal = ({ t, isDark, settings, mode, entry, onClose, onSave, copy, a
   };
 
   return (
-    <div className={`fixed inset-0 z-[100] flex flex-col h-[100dvh] transition-colors ${isDark ? 'bg-[#0d0d0d]' : 'bg-[#f5f5f5]'}`}>
+    <div className={`fixed inset-0 z-[100] flex flex-col h-[100dvh] transition-colors pt-safe pb-safe ${isDark ? 'bg-[#0d0d0d]' : 'bg-[#f5f5f5]'}`}>
       <header className={`h-16 border-b flex items-center px-4 justify-between sticky top-0 z-[110] ${isDark ? 'bg-[#111]/95 border-white/5' : 'bg-white/95 border-black/5 shadow-sm'}`}>
         <button onClick={onClose} className="p-2 text-gray-500 hover:text-[#4CAF50] transition-colors"><Icons.ChevronLeft size={24} /></button>
         <h2 className="text-[11px] font-black uppercase tracking-widest truncate flex-1 text-center">{isView ? t.detailedInfo : typeLabels[localData.type]}</h2><div className="w-10"/>
