@@ -88,8 +88,8 @@ export class SecurityService {
   // Step 4: Backup & Import
   static async exportVault(vaultData: any, password: string): Promise<string> {
     const encrypted = await this.encryptVault(JSON.stringify(vaultData), password);
-    const dataToHash = JSON.stringify(encrypted);
-    const checksum = CryptoJS.SHA256(dataToHash).toString();
+    // Use a deterministic way to hash the data or hash the ciphertext string directly
+    const checksum = CryptoJS.SHA256(encrypted.ciphertext + encrypted.salt + encrypted.iv).toString();
     
     const backup = {
       type: 'SECUREPASS_BACKUP',
@@ -109,27 +109,33 @@ export class SecurityService {
       const backup = JSON.parse(backupFileContent);
       if (backup.type !== 'SECUREPASS_BACKUP') return { success: false, error: 'ERR_INVALID_FILE_TYPE' };
 
-      // Check integrity
-      const dataToHash = JSON.stringify(backup.data);
-      const checksum = CryptoJS.SHA256(dataToHash).toString();
+      // Check integrity using the same deterministic fields
+      const encrypted = backup.data;
+      const checksum = CryptoJS.SHA256(encrypted.ciphertext + encrypted.salt + encrypted.iv).toString();
+      
       if (checksum !== backup.header.checksum) return { success: false, error: 'ERR_FILE_CORRUPTED' };
 
       // Try decrypt with provided password
       const decrypted = await this.decryptVault(backup.data, password);
       if (decrypted) {
-        // Calculate authHash for the new key file
-        const salt = backup.header.salt;
-        const iterations = backup.header.iterations || SecurityService.ITERATIONS;
-        const key = await SecurityService.deriveKey(password, salt, iterations);
-        const authHash = CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex);
+        try {
+          const parsedData = JSON.parse(decrypted);
+          // Calculate authHash for the new key file
+          const salt = backup.header.salt;
+          const iterations = backup.header.iterations || SecurityService.ITERATIONS;
+          const key = await SecurityService.deriveKey(password, salt, iterations);
+          const authHash = CryptoJS.SHA256(key).toString(CryptoJS.enc.Hex);
 
-        return { 
-          success: true, 
-          data: JSON.parse(decrypted),
-          salt,
-          authHash,
-          iterations
-        };
+          return { 
+            success: true, 
+            data: parsedData,
+            salt,
+            authHash,
+            iterations
+          };
+        } catch (e) {
+          return { success: false, error: 'ERR_INVALID_PASSWORD' };
+        }
       } else {
         return { success: false, error: 'ERR_INVALID_PASSWORD' };
       }
@@ -224,7 +230,7 @@ export class SecurityService {
 
       const createOptions: PublicKeyCredentialCreationOptions = {
         challenge,
-        rp: { name: "SecurePass", id: window.location.hostname },
+        rp: { name: "SecurePass", id: window.location.hostname || "localhost" },
         user: { id: userID, name: "user@securepass", displayName: "SecurePass User" },
         pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
         authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "required" },
@@ -253,7 +259,7 @@ export class SecurityService {
 
       const getOptions: PublicKeyCredentialRequestOptions = {
         challenge,
-        rpId: window.location.hostname,
+        rpId: window.location.hostname || "localhost",
         userVerification: "required",
         timeout: 60000
       };

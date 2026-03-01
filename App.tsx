@@ -6,6 +6,8 @@ import { Capacitor } from '@capacitor/core';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Keyboard } from '@capacitor/keyboard';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { PasswordEntry, AppView, SettingsState, EntryType } from './types';
 import { generatePassword, calculateStrength, getStrengthColor } from './utils/passwordUtils';
 import { SecurityService } from './services/SecurityService';
@@ -390,25 +392,102 @@ const DEFAULT_SUBFOLDERS: Record<string, string[]> = {
 const WALLET_LIST = ['Momo', 'Zalopay', 'ShopeePay', 'VNPay', 'Viettel Money', 'VinID', 'PayPal'];
 
 const shareData = async (title: string, text: string, dataUrl?: string) => {
-  try {
-    const shareParams: any = { title, text };
-    if (dataUrl && dataUrl.startsWith('data:')) {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], 'securepass_share.png', { type: blob.type });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        shareParams.files = [file];
+  if (Capacitor.isNativePlatform()) {
+    try {
+      let url = dataUrl;
+      if (dataUrl && dataUrl.startsWith('data:')) {
+        const base64Data = dataUrl.split(',')[1];
+        const result = await Filesystem.writeFile({
+          path: 'share_image.png',
+          data: base64Data,
+          directory: Directory.Cache,
+        });
+        url = result.uri;
+      }
+      await Share.share({
+        title,
+        text,
+        url,
+      });
+    } catch (e) {
+      console.error('Error sharing data:', e);
+    }
+  } else {
+    try {
+      const shareParams: any = { title, text };
+      if (dataUrl && dataUrl.startsWith('data:')) {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], 'securepass_share.png', { type: blob.type });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          shareParams.files = [file];
+        }
+      }
+      if (navigator.share) {
+        await navigator.share(shareParams);
+      } else {
+        await navigator.clipboard.writeText(dataUrl || text);
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Error sharing:', err);
       }
     }
-    if (navigator.share) {
-      await navigator.share(shareParams);
-    } else {
-      await navigator.clipboard.writeText(dataUrl || text);
+  }
+};
+
+const shareFile = async (content: string, fileName: string, mimeType: string) => {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const result = await Filesystem.writeFile({
+        path: fileName,
+        data: content,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8
+      });
+      await Share.share({
+        title: fileName,
+        url: result.uri,
+      });
+    } catch (e) {
+      console.error('Error sharing file:', e);
     }
-  } catch (err) {
-    if ((err as Error).name !== 'AbortError') {
-      console.error('Error sharing:', err);
+  } else {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+};
+
+const shareImage = async (canvasId: string, fileName: string) => {
+  const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+  if (!canvas) return;
+  const dataUrl = canvas.toDataURL('image/png');
+  const base64Data = dataUrl.split(',')[1];
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const result = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+      await Share.share({
+        title: fileName,
+        url: result.uri,
+      });
+    } catch (e) {
+      console.error('Error sharing image:', e);
     }
+  } else {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileName;
+    link.click();
   }
 };
 
@@ -694,14 +773,14 @@ const App: React.FC = () => {
     e?.preventDefault();
     if (isUnlocking) return;
     
-    let passToUse = providedPass || masterPassword;
+    let passToUse = (providedPass || masterPassword || '').trim();
     const keyFileToUseData = providedKeyFile || uploadedKeyFile;
     
     // If no password provided, try to use remembered password if key file is present
     if (!passToUse) {
       const remembered = localStorage.getItem('securepass_remembered_mp');
       if (remembered && (keyFileToUseData || isBiometric)) {
-        passToUse = remembered;
+        passToUse = remembered.trim();
       }
     }
 
@@ -714,7 +793,6 @@ const App: React.FC = () => {
 
     try {
       if (isVerifyingImport && pendingImportData) {
-        // ... (import logic remains same)
         const result = await SecurityService.importVault(JSON.stringify(pendingImportData), passToUse);
         if (result.success) {
           setEntries(result.data);
@@ -741,7 +819,13 @@ const App: React.FC = () => {
           localStorage.setItem('securepass_vault', JSON.stringify(encrypted));
           return;
         } else {
-          setToast(result.error === 'ERR_INVALID_PASSWORD' ? t.wrongPassword : t.importFileErrorMsg);
+          if (result.error === 'ERR_INVALID_FILE_TYPE') {
+            setToast("File không đúng định dạng sao lưu (.vpass)");
+          } else if (result.error === 'ERR_FILE_CORRUPTED') {
+            setToast("File bị lỗi hoặc đã bị chỉnh sửa");
+          } else {
+            setToast(t.wrongPassword);
+          }
           return;
         }
       }
@@ -758,8 +842,12 @@ const App: React.FC = () => {
 
         const result = await SecurityService.verifyAccess(passToUse, keyFileToUse);
         if (!result.success) {
-          setLoginError(t.wrongPassword);
-          setToast(t.wrongPassword);
+          if (result.error === 'ERR_INVALID_FILE_TYPE') {
+            setToast("Vui lòng chọn đúng File Khóa (.vpass)");
+          } else {
+            setLoginError(t.wrongPassword);
+            setToast(t.wrongPassword);
+          }
           return;
         }
 
@@ -885,14 +973,8 @@ const App: React.FC = () => {
     if (!masterPassword) return;
     try {
       const backup = await SecurityService.exportVault(entries, masterPassword);
-      const blob = new Blob([backup], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
       const dateStr = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
-      link.download = `Data_SecurePass_${dateStr}.vpass`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await shareFile(backup, `Data_SecurePass_${dateStr}.vpass`, 'application/json');
       setToast(t.success);
     } catch (err) {
       setToast("Lỗi sao lưu");
@@ -1562,14 +1644,8 @@ const MasterPasswordModal = ({ t, isDark, onClose, setMasterPassword, settings, 
 
   const downloadKeyFile = async () => {
     if (!keyFile) return;
-    const blob = new Blob([JSON.stringify(keyFile, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
     const dateStr = new Date().toLocaleDateString('vi-VN').replace(/\//g, '-');
-    link.download = `Key_SecurePass_${dateStr}.vpass`;
-    link.click();
-    URL.revokeObjectURL(url);
+    await shareFile(JSON.stringify(keyFile, null, 2), `Key_SecurePass_${dateStr}.vpass`, 'application/json');
     
     const available = await SecurityService.isBiometricAvailable();
     if (available) {
@@ -2400,7 +2476,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
                 <div className="space-y-1"><label className="text-[10px] font-black uppercase text-gray-500 ml-1">{t.wifiPassword}</label><input type="password" value={wifiPassword} onChange={e => setWifiPassword(e.target.value)} className={`w-full border rounded-2xl py-3 px-4 outline-none ${isDark ? 'bg-[#181818] border-white/5 text-white' : 'bg-white border-gray-200 shadow-sm'}`} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { const link = document.createElement('a'); link.download = `wifi-${wifiSsid}.png`; link.href = (document.getElementById('wifi-qr-canvas') as HTMLCanvasElement).toDataURL(); link.click(); }} className="bg-[#4CAF50] text-white py-2.5 rounded-2xl font-bold text-[10px] uppercase shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                <button onClick={() => shareImage('wifi-qr-canvas', `wifi-${wifiSsid}.png`)} className="bg-[#4CAF50] text-white py-2.5 rounded-2xl font-bold text-[10px] uppercase shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
                   <Icons.Download size={14}/> {t.downloadQr}
                 </button>
                 <button onClick={handleSaveWifi} className={`py-2.5 rounded-2xl font-bold text-[10px] uppercase border active:scale-95 transition-all flex items-center justify-center gap-2 ${isDark ? 'bg-white/5 border-white/10 text-[#4CAF50]' : 'bg-white border-gray-200 text-[#4CAF50] shadow-sm'}`}>
@@ -2419,7 +2495,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
               {showShareQR && <div className="flex flex-col items-center bg-white p-6 rounded-[2.5rem] shadow-xl qr-canvas-target animate-in zoom-in-95 space-y-4">
                   <QRCodeCanvas id="share-qr-canvas" value={shareText} size={200} includeMargin level="H" />
                   <div className="flex gap-4">
-                    <button onClick={() => { const link = document.createElement('a'); link.download = 'shared-qr.png'; link.href = (document.getElementById('share-qr-canvas') as HTMLCanvasElement).toDataURL(); link.click(); }} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">{t.downloadQr}</button>
+                    <button onClick={() => shareImage('share-qr-canvas', 'shared-qr.png')} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">{t.downloadQr}</button>
                     <button onClick={() => shareData("QR Code", shareText, (document.getElementById('share-qr-canvas') as HTMLCanvasElement).toDataURL())} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">SHARE QR</button>
                   </div>
               </div>}
@@ -2449,7 +2525,7 @@ const GeneratorScreen = ({ t, isDark, genPass, genConfig, setGenConfig, handleGe
                   <QRCodeCanvas id="link-qr-canvas" value={linkUrl} size={200} includeMargin level="H" />
                   <p className="text-[9px] text-red-500 font-bold uppercase animate-pulse">Mã QR sẽ tự hủy sau 5 phút</p>
                   <div className="flex gap-4">
-                    <button onClick={() => { const link = document.createElement('a'); link.download = 'link-qr.png'; link.href = (document.getElementById('link-qr-canvas') as HTMLCanvasElement).toDataURL(); link.click(); }} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">{t.downloadQr}</button>
+                    <button onClick={() => shareImage('link-qr-canvas', 'link-qr.png')} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">{t.downloadQr}</button>
                     <button onClick={() => shareData("Link QR", linkUrl, (document.getElementById('link-qr-canvas') as HTMLCanvasElement).toDataURL())} className="text-[#4CAF50] font-black text-[11px] uppercase tracking-widest">CHIA SẺ NHANH</button>
                   </div>
                 </div>
