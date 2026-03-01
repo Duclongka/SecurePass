@@ -1,4 +1,3 @@
-import Tesseract from 'tesseract.js';
 
 export interface OCRResult {
   cardNumber?: string;
@@ -9,6 +8,7 @@ export interface OCRResult {
 export const ocrService = {
   scanImage: async (imageSrc: string, type: 'card' | 'document'): Promise<OCRResult> => {
     try {
+      const Tesseract = (await import('tesseract.js')).default;
       const { data: { text } } = await Tesseract.recognize(imageSrc, 'eng', {
         logger: m => console.log(m)
       });

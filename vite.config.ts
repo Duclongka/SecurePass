@@ -10,7 +10,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      base: '/SecurePass/',
+      base: './',
+      build: {
+        target: 'es2015',
+        minify: 'terser',
+        cssCodeSplit: false,
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',
